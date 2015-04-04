@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Ride Graph</title>
+
+    <!-------------------------------------------------------------------------------------------------------------------------->
+    <!-------------------------------------------------------------------------------------------------------------------------->
+    <!-------------------------------------------------------------------------------------------------------------------------->
+    
+    <style rel="stylesheet">
+    	.center {
+		    margin-left: auto;
+		    margin-right: auto;
+		    width: 80%;
+		    text-align: center;
+		}
+		
+    	.bignum {
+		    font-size: 110%;
+		    color: "#656565";
+		}		
+
+    	.bigtext {
+			font-size: 120%;
+		}	
+																    
+        body {
+	        font-family: "Segoe UI", Tahoma, Helvetica, freesans, sans-serif;
+	        font-size: 90%;
+	        margin: 10px;
+	        color: #333;
+	        background-color: #fff;
+        }
+
+        h1, h2 {
+	        font-size: 1.5em;
+	        font-weight: normal;
+        }
+
+        h2 {
+	        font-size: 1.3em;
+        }
+
+        legend {
+	        font-weight: bold;
+	        color: #333;
+        }
+
+        #filedrag {
+	        display: none;
+	        font-weight: bold;
+	        text-align: center;
+	        padding: 1em 0;
+	        margin: 1em 0;
+	        color: #555;
+	        border: 2px dashed #555;
+	        border-radius: 7px;
+	        cursor: default;
+        }
+
+        #filedrag.hover {
+	        color: #f00;
+	        border-color: #f00;
+	        border-style: solid;
+	        box-shadow: inset 0 3px 4px #888;
+        }
+
+        img {
+	        max-width: none;
+        }
+
+        pre {
+	        width: 95%;
+	        height: 8em;
+	        font-family: monospace;
+	        font-size: 0.9em;
+	        padding: 1px 2px;
+	        margin: 0 0 1em auto;
+	        border: 1px inset #666;
+	        background-color: #eee;
+	        overflow: auto;
+        }
+
+        #messages {
+	        padding: 0 10px;
+	        margin: 1em 0;
+	        border: 1px solid #999;
+        }
+
+		#progress p {
+			padding: 2px 5px;
+			margin: 2px 0;
+			border: 1px inset #446;
+			border-radius: 5px;
+			background: #eee url("http://127.0.0.1:4747/progress.png") 100% 0 repeat-y;
+		}
+		
+		#progress p.success {
+			background: #0c0 none 0 0 no-repeat;
+		}
+		
+		#progress p.failed {
+			background: #c00 none 0 0 no-repeat;
+		}	
+    </style>
+
+	<link rel="stylesheet" href="jquery.mobile-1.4.5.min.css" />
+</head>
+
+    <!-------------------------------------------------------------------------------------------------------------------------->
+
+<body>
+
+	<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+	<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+	<script type="text/javascript" src="jquery-2.1.3.min.js"></script>
+	<script src="jquery.mobile-1.4.5.min.js"></script>
+	
+    <!-------------------------------------------------------------------------------------------------------------------------->
+    <!-------------------------------------------------------------------------------------------------------------------------->
+    <!-------------------------------------------------------------------------------------------------------------------------->
+
+ 	<img src="logo_rel.png"> 
+ 
+	<form id="upload" action="show_it" method="POST" enctype="multipart/form-data">
+	
+		<div id="filedrag">
+			<label for="fileselect"> Drag & Drop .tcx or .gpx file here</label>
+			<input type="file" id="fileselect" name="fileselect[]" multiple="multiple" />
+		</div>
+		
+		<div id="submitbutton">
+			<button type="submit">Upload Files</button>
+		</div>
+	</form>
+	
+	<div id="progress" style="display:none;"></div>
+	<div id="messages" style="display:none;"></div>
+	
+    <div data-role="fieldcontain" data-mini="true">
+        <table>
+          <tr>
+            <td>
+              <br>
+              <label id="showSpeedLabel">Vitesse</label>&nbsp;
+            </td>
+            <td>
+              <select id="showSpeedSwitch" data-mini="true" data-role="slider">
+                <option value="0" selected="selected">0</option>
+                <option value="1">1</option>
+              </select>
+            </td>
+          </tr>
+        </table>
+    </div>
+      
+	<br>
+	<div id="general_stat" class="center"></div>
+	<div id="laps_stat" class="center"></div>
+
+	<div id="hb_graph_div" style="min-height: 400px;" ></div>
+	<br>
+
+	<div class="center">
+		<table style="height:512px; width:100%; margin-left:auto; margin-right:auto">
+			<tr>
+				<td>
+					<br><br>
+					<div id="hb_stat_bar_div" style="min-height: 512px;"></div>
+				</td>
+				<td>
+					<div id="hb_stat_pie_div" style="min-height: 512px;"></div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	
+	<div id="hb_stat_txt" style="display:none; font-size: 120%;">
+		<table border="1" cellpadding="4" style="margin-left:auto; margin-right:auto;">
+			<tr>
+				<td>
+					<div id="hb_stat_txt00" style="text-align:: left;">
+				</td>
+				<td>
+					<div id="hb_stat_txt01" style="text-align:: left;">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<div id="hb_stat_txt10" style="text-align:: left;">
+				</td>
+				<td>
+					<div id="hb_stat_txt11" style="text-align:: left;">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<div id="hb_stat_txt20" style="text-align:: left;">
+				</td>
+				<td>
+					<div id="hb_stat_txt21" style="text-align:: left;">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<div id="hb_stat_txt30" style="text-align:: left;">
+				</td>
+				<td>
+					<div id="hb_stat_txt31" style="text-align:: left;">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<div id="hb_stat_txt40" style="text-align:: left;">
+				</td>
+				<td>
+					<div id="hb_stat_txt41" style="text-align:: left;">
+				</td>
+			</tr>
+		</table>
+	</div>
+	<br>
+	
+	<div id="map_canvas" style="min-height: 1200px; width:80%; text-align: center; margin-left: auto; margin-right: auto"></div>
+
+    <!-------------------------------------------------------------------------------------------------------------------------->
+    <!-------------------------------------------------------------------------------------------------------------------------->
+    <!-------------------------------------------------------------------------------------------------------------------------->
+
+	<script>
+	
+		// ------- getElementById
+		function elemById(id) {
+			return document.getElementById(id);
+		}
+	
+		// ------- output information
+		function Output(msg) {
+			var m = document.getElementById("messages");
+			m.innerHTML = msg;
+		}
+
+		// ------- output information
+		function OutputStat(msg) {
+			var m = document.getElementById("general_stat");
+			m.innerHTML = msg;
+		}
+
+		// ------- output laps
+		function OutputLaps(msg) {
+			var m = document.getElementById("laps_stat");
+			m.innerHTML = msg;
+		}
+					
+		// ------- file drag hover
+		function FileDragHover(e) {
+			e.stopPropagation();
+			e.preventDefault();
+			e.target.className = (e.type == "dragover" ? "hover" : "");
+		}
+	
+	
+		// ------- file selection
+		function FileSelectHandler(e) {
+			// switches
+			ManageSwitches();
+			
+			// cancel event and hover styling
+			FileDragHover(e);
+	
+			// fetch FileList object
+			var files = e.target.files || e.dataTransfer.files;
+			globalFiles = files;
+	
+			// process one file
+			if(files.length <= 1) {
+				ParseOneFile(files[0]);
+			}
+			// process many files
+			else {
+				ParseManyFiles(files);
+			}
+		}
+	
+		// ------- switches
+		function ManageSwitches() {
+			// speed
+			$("#showSpeedSwitch").bind( "change", function(event, ui) {
+	  			var showSpeedSwitchValue = $("#showSpeedSwitch").val();
+				renderSpeed = showSpeedSwitchValue;
+				
+				// reload
+				if(globalFiles.length <= 1) {
+					if(hbChart) {
+						hbChart.clearChart();
+					}
+					drawHbGraph();
+				}
+				else {
+					// TODO
+				}
+			});
+		}	
+			
+		// ------------------------
+		// ------------------------
+		// ------------------------
+
+		function ParseManyFiles(files) {
+			// cleanup
+			cleanGlobalsMany();
+			
+			// nb files
+			nbFiles = files.length;
+			
+			for (var i = 0, f; f = files[i]; i++) {
+				if (f.name.toLowerCase().indexOf(".tcx")>=0) {
+					var reader = new FileReader();
+					reader.onload = function(e) {
+						parseManyTcx(e.target.result);
+					};
+					reader.readAsText(f);
+				}
+			}
+		}
+		
+		// ------------------------
+		var globalFiles;
+		var renderSpeed = 0;
+		
+		var interpolMissingHB = true;
+		var xAxisIsTime = false;
+		
+		var hbChart;
+		var hb_zone = {0:[0,124], 1:[125, 155], 2:[156,175], 3:[176,189], 4:[190,240]};
+        var hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
+        
+		var RA = "RA: <" + hb_zone[0][1];
+        var EF = "EF: " + hb_zone[1][0] + "→" + hb_zone[1][1];
+        var SEUIL1 = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
+        var SEUIL2 = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
+        var PMA = "PMA: >" + hb_zone[4][0];
+        var FCMAX = "195";
+        var FCR   = "45";
+        
+		var hbArrayMany = new Array();
+		var timeArrayMany = new Array();
+		var diffTimeArrayMany = new Array();
+		var distArrayMany = new Array();
+		var nbFilesParsed = 0;
+		var nbFiles;
+		var tot_sec_safe_many = 0;
+		var lastTimeMany = 0;
+		var tot_sec_many = 0;
+		var tot_dist_many = 0;
+		var lastHbMany = 0;
+		var max_hb_many = 0;
+		var ave_hb_many = 0;
+		var sum_hb_many = 0;
+		
+		function cleanGlobalsMany(xml) {
+			
+			if(hbChart) {
+				hbChart.clearChart();
+			}
+			
+			hbArrayMany = new Array();
+			timeArrayMany = new Array();
+			diffTimeArrayMany = new Array();
+			distArrayMany = new Array();
+			hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
+			nbFilesParsed = 0;
+			lastTimeMany = 0;
+			tot_sec_safe_many = 0;
+			tot_sec_many = 0;
+			tot_dist_many = 0;
+			lastHbMany = 0;
+			max_hb_many = 0;
+			ave_hb_many = 0;
+			sum_hb_many = 0;
+		}
+		
+		function parseManyTcx(xml) {
+			
+			$(xml).find("Trackpoint").each(function() {
+				
+				var diffTime;
+				
+				// time
+				var t = $(this).find("Time").text();
+				if(t != "") {
+					timeArrayMany.push(t);
+				}
+				
+				// time diff
+				if(lastTimeMany != 0) {
+					var t2 = new Date(Date.parse(t));
+					var t1 = new Date(Date.parse(lastTimeMany));
+					diffTime = (t2-t1)/1000.0;
+					diffTimeArrayMany.push(diffTime);
+					tot_sec_safe_many += diffTime;
+				}
+				
+				// hb
+				var hb = $(this).find("HeartRateBpm").find("Value").text();
+				if(hb != "" && lastTimeMany!=0) {
+					hbInt = parseInt(hb);
+					hbArrayMany.push(hbInt);
+					
+					lastHbMany = hbInt;
+					sum_hb_many += hbInt;
+                    if(hbInt > max_hb_many) {
+                        max_hb_many = hbInt;	
+                    }
+				}
+				else {
+					if(lastHbMany != 0) {
+						if(interpolMissingHB) {
+							hbArrayMany.push(lastHbMany);
+							sum_hb_many += lastHbMany;
+						}
+					}
+				}
+				
+				if(t != "") {
+					lastTimeMany = t;
+				}
+
+				// distance
+				var dist = $(this).find("DistanceMeters").text();
+				if(dist != "") {
+					distArrayMany.push( parseFloat(dist)/1000.0 + tot_dist_many );
+				}	
+				
+			}); // for each each Trackpoint
+			
+			var lap = $(xml).find("Lap").each(function() {
+				if(lap != "" && (typeof lap === "undefined")) {
+					tot_sec_many += parseFloat($(this).find("TotalTimeSeconds").text());
+					tot_dist_many += parseFloat($(this).find("DistanceMeters").text()) / 1000.0;
+				}
+			});	
+				
+			// for next file
+			lastTimeMany = 0;
+			lastHbMany = 0;
+			nbFilesParsed += 1;
+			
+			// all files parsed
+			if(nbFilesParsed == nbFiles) {
+				processManyFiles();
+				drawChartsMany();
+			}
+		}
+		
+		// ----------------
+		
+		function processManyFiles() {
+			ave_hb_many = sum_hb_many / hbArrayMany.length;
+			
+			var hb;
+			for (var i = 0; i < hbArrayMany.length ; i++) {
+				hb = hbArrayMany[i];
+            	for(var k in hb_zone) {
+            		if( (hb_zone[k][0] <= hb) && (hb <= hb_zone[k][1]) ) {
+            			hb_zone_out[k] += diffTimeArrayMany[i];
+                        break;
+            		}
+            	}
+            }
+            
+			hbSmoothArrayMany = hbArrayMany;
+			hbSmoothArrayMany = lowPass(hbSmoothArrayMany, .10);
+			hbSmoothArrayMany = hendersonSmooth(hbSmoothArrayMany, 2);
+		}
+		
+		// ----------------
+
+		function drawChartsMany() {
+			
+			// General stat
+			var s = "";
+			 s += "<div class='bigtext'>";
+			 s += "<b>" + "Distance:&nbsp" + "</b>" + "<span class='bignum'>" + (tot_dist_many).toFixed(2)+"km" + "</span>" + ", ";
+			 s += "<b>" + "Temps:&nbsp" + "</b>" + "<span class='bignum'>" + HHMMSS(tot_sec_many) + "</span>"  + ", ";
+			 s += "<b>" + "Vitesse moy:&nbsp" + "</b>" + "<span class='bignum'>" + ((tot_dist_many/tot_sec_many)*3600).toFixed(2) +"km/h" + "</span>"  + ", ";
+			 s += "<b>" + "FCmoy:&nbsp" + "</b>" + "<span class='bignum'>" + ave_hb_many.toFixed(0)+"bpm" + "("  + Math.round(ave_hb_many*100/FCMAX) + "%)" + "</span>" + ", ";
+			 s += "<b>" + "FCmax:&nbsp" + "</b>" + "<span class='bignum'>" + max_hb_many+"bpm" + "(" + Math.round(max_hb_many*100/FCMAX) + "%)" + "</span>";
+			 s += "</div>";
+			
+			 OutputStat(s);
+			 OutputLaps("");
+
+			// HB graph
+			var data = new google.visualization.DataTable();
+
+			graphArray = new Array();
+			
+			//console.log(Math.min(distArrayMany.length, hbSmoothArrayMany.length));
+
+			if(!xAxisIsTime) {
+				// distance
+				data.addColumn('number', 'X');
+
+				for (var i = 0; i < Math.min(distArrayMany.length, hbSmoothArrayMany.length) ; i++) {
+					graphArray.push([distArrayMany[i], hbSmoothArrayMany[i]]);
+				}				
+			}
+			else {
+				// time
+				//data.addColumn('datetime', 'X');
+				data.addColumn('number', 'X');
+
+				var all_time_many = 0;
+				for (var i = 0; i < Math.min(diffTimeArrayMany.length, hbSmoothArrayMany.length) ; i++) {
+					graphArray.push([all_time_many/60, hbSmoothArrayMany[i]]);
+					all_time_many += diffTimeArrayMany[i];
+				}				
+			} 
+
+	        data.addColumn('number', 'FC');
+	        //data.addColumn('number', 'V');
+
+	    	data.addRows( graphArray );
+
+			if(xAxisIsTime) {
+				var haxis = {
+	              	title: 'Temps (min)',
+	              	gridlines: {'count': 10},
+	           	};
+			}
+			else {
+				var haxis = {
+	              	title: 'Distance (kms)',
+	              	gridlines: {'count': 10},
+	           	};				
+			}
+
+
+	        var options = {
+                  
+	            hAxis: haxis,
+
+	            vAxis: {
+	              title: 'Fréquence cardiaque (bpm)',
+	              gridlines: {'count': 10},
+	            },
+	            	            
+	            series: {
+		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+		            1: { type: "line", color: '#711be7', targetAxisIndex:0 },
+				},
+          
+	            chartArea: {width:'80%',height:'80%'},
+	            
+	            explorer: {
+	                actions: ['dragToZoom', 'rightClickToReset'],
+	                maxZoomOut: 32,
+	                maxZoomIn: 0.05,
+	                axis: 'horizontal',                
+	                keepInBounds: false
+	            }
+	          };
+		
+			 hbChart = new google.visualization.ComboChart(document.getElementById('hb_graph_div'));
+	         hbChart.draw(data, options);
+	         
+			// ------------------------------------------------------
+			// HB PIE CHART
+			
+			var zones = new Array();
+			zones.push(['HB zones', 'HB zones']);
+			zones.push([PMA, hb_zone_out[4]]);
+			zones.push([SEUIL2, hb_zone_out[3]]);
+			zones.push([SEUIL1, hb_zone_out[2]]);
+			zones.push([EF, hb_zone_out[1]]);
+			zones.push([RA, hb_zone_out[0]]);
+		
+			//console.log(zones);
+			var data = google.visualization.arrayToDataTable(zones);
+	
+	        var options = {
+	          title: 'Zones de fréquence cardiaque',
+	          // chartArea: {width:'80%',height:'80%'},
+  			  colors: ['#DC3912', '#FF9900', '#FCE94F', '#329262', '#66AA00'],
+  			  is3D: true,
+	        };
+	
+	        var chart = new google.visualization.PieChart(document.getElementById('hb_stat_pie_div'));
+	
+	        chart.draw(data, options);
+
+			// ------------------------------------------------------
+			// HB BAR CHART
+			
+			var zones = new Array();
+			zones.push(["HB zones", "HB zones", { role: "style" } ]);
+			zones.push([RA, round10((hb_zone_out[0]*100.0)/tot_sec_safe_many), "color: #66AA00"]);
+			zones.push([EF, round10((hb_zone_out[1]*100.0)/tot_sec_safe_many), "color: #329262"]);
+			zones.push([SEUIL1, round10((hb_zone_out[2]*100.0)/tot_sec_safe_many), "color: #FCE94F"]);
+			zones.push([SEUIL2, round10((hb_zone_out[3]*100.0)/tot_sec_safe_many), "color: #FF9900"]);
+			zones.push([PMA, round10((hb_zone_out[4]*100.0)/tot_sec_safe_many), "color: #DC3912"]);
+		
+		      var data = google.visualization.arrayToDataTable(zones);
+		
+		      var view = new google.visualization.DataView(data);
+		      view.setColumns([0, 1,
+		                       { calc: "stringify",
+		                         sourceColumn: 1,
+		                         type: "string",
+		                         role: "annotation" },
+		                       2]);
+		
+		      var options = {
+		        title: "Zones de fréquence cardiaque",
+		        width: 600,
+		        height: 400,
+		        bar: {groupWidth: "100%"},
+		        legend: { position: "none" },
+		      };
+		      var chart = new google.visualization.BarChart(document.getElementById("hb_stat_bar_div"));
+		      chart.draw(view, options);
+		      
+		    // -------------------------------------------------------------------------------------------------
+			// Labels
+			var m = document.getElementById("hb_stat_txt00");
+			m.innerHTML = RA + "(" + Math.round(hb_zone[0][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt01");
+			m.innerHTML = HHMMSS(hb_zone_out[0]) + " (" + round10((hb_zone_out[0]*100.0)/tot_sec_safe_many) + "% temps)";
+
+			var m = document.getElementById("hb_stat_txt10");
+			m.innerHTML = "EF: " + hb_zone[1][0] + "(" + Math.round(hb_zone[1][0]*100/FCMAX) + "%)" + "→" + hb_zone[1][1]+ "(" + Math.round(hb_zone[1][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt11");
+			m.innerHTML = HHMMSS(hb_zone_out[1]) + " (" + round10((hb_zone_out[1]*100.0)/tot_sec_safe_many) + "% temps)";
+
+			var m = document.getElementById("hb_stat_txt20");
+			m.innerHTML = "SV1+: " + hb_zone[2][0] + "(" + Math.round(hb_zone[2][0]*100/FCMAX) + "%)" + "→" + hb_zone[2][1]+ "(" + Math.round(hb_zone[2][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt21");
+			m.innerHTML = HHMMSS(hb_zone_out[2]) + " (" + round10((hb_zone_out[2]*100.0)/tot_sec_safe_many) + "% temps)";
+		
+			var m = document.getElementById("hb_stat_txt30");
+			m.innerHTML = "SV2+: " + hb_zone[3][0] + "(" + Math.round(hb_zone[3][0]*100/FCMAX) + "%)" + "→" + hb_zone[3][1]+ "(" + Math.round(hb_zone[3][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt31");
+			m.innerHTML = HHMMSS(hb_zone_out[3]) + " (" + round10((hb_zone_out[3]*100.0)/tot_sec_safe_many) + "% temps)";
+			
+			var m = document.getElementById("hb_stat_txt40");
+			m.innerHTML = PMA + "(" + Math.round(hb_zone[4][0]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt41");
+			m.innerHTML = HHMMSS(hb_zone_out[4]) + " (" + round10((hb_zone_out[4]*100.0)/tot_sec_safe_many) + "% temps)";
+			
+			var hb_stat_txt = document.getElementById("hb_stat_txt");
+			hb_stat_txt.style.display = "block";
+			
+		}
+		
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------------------------------------
+		
+		// ------- output file information
+		function ParseOneFile(file) {
+	
+			// display an image
+			if (file.type.indexOf("image") == 0) {
+				var reader = new FileReader();
+				reader.onload = function(e) {
+					Output(
+						"<p><strong>" + file.name + ":</strong><br />" +
+						'<img src="' + e.target.result + '" /></p>'
+					);
+				};
+				reader.readAsDataURL(file);
+			}
+			else if (file.name.toLowerCase().indexOf(".tcx")>=0) {
+				var reader = new FileReader();
+				reader.onload = function(e) {
+					parseTcx(e.target.result);
+				};
+				reader.readAsText(file);
+			}
+		}
+	
+		// ------------------------
+		// ------------------------
+		// ------------------------
+		
+		// const to clear on reload
+		var lastHb = 0;
+		var lastTime = 0;
+		var tot_sec = 0;
+		var tot_sec_safe = 0;
+		var tot_dist = 0;
+		var timeArray = new Array();
+		var diffTimeArray = new Array();
+		var lapsArray = new Array();
+
+		var hbArray = new Array();
+		var hbArrayTime = new Array();
+		var hbSmoothArray = new Array();
+		var distArray = new Array();
+		var posArray = new Array();
+		var vitArray = new Array();
+		var vitSmoothArray = new Array();
+        var max_hb = 0;
+        var sum_hb = 0;
+        var ave_hb = 0;
+        var prev_dist = 0;
+            
+		function clearGlobals() {
+			timeArray = new Array();
+			diffTimeArray = new Array();
+			hbArray = new Array();
+			hbArrayTime = new Array();
+			hbSmoothArray = new Array();
+			hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
+			lapsArray = new Array();
+
+			distArray = new Array();
+			posArray = new Array();
+			tot_sec = 0;
+			tot_sec_safe = 0;
+			tot_dist = 0;
+        	max_hb = 0;
+        	sum_hb = 0;
+			lastHb = 0;
+			lastTime = 0;
+			ave_hb = 0;
+			prev_dist = 0;
+			vitArray = new Array();
+			vitSmoothArray = new Array();
+		}
+		
+		function parseTcx(xml) {
+			
+			// some cleanup
+			if(hbChart) {
+				hbChart.clearChart();
+				clearGlobals();
+			}
+			
+			// parse xml
+			$(xml).find("Trackpoint").each(function() {
+				
+				var diffTime;
+				
+				// time
+				var t = $(this).find("Time").text();
+				if(t != "") {
+					timeArray.push(t);
+				}
+				
+				// time diff
+				if(lastTime != 0) {
+					var t2 = new Date(Date.parse(t));
+					var t1 = new Date(Date.parse(lastTime));
+					diffTime = (t2-t1)/1000.0;
+					diffTimeArray.push(diffTime);
+					tot_sec_safe += diffTime;
+				}
+				
+				// hb
+				var hb = $(this).find("HeartRateBpm").find("Value").text();
+				if(hb != "" && lastTime!=0) {
+					hbInt = parseInt(hb);
+					hbArray.push(hbInt);
+					hbArrayTime.push(diffTime);
+					
+					lastHb = hbInt;
+					
+                    // hb stat
+                    sum_hb += hbInt;
+                    if(hbInt > max_hb) {
+                        max_hb = hbInt;	
+                    }
+				}
+				else {
+					if(lastHb != 0) {
+						if(interpolMissingHB) {
+							hbArray.push(lastHb);
+                    		sum_hb += lastHb;
+               			}
+					}
+				}
+
+				if(t != "") {
+					lastTime = t;
+				}
+				// distance
+				var dist = $(this).find("DistanceMeters").text();
+				if(dist != "") {
+					var d = parseFloat(dist)
+					distArray.push( d/1000.0 );
+					
+						var delta_dist = d - prev_dist;
+	                    if(delta_dist < 0) {
+	                		delta_dist = 0;
+	                    }
+	                    prev_dist = d;
+	                    
+	                    var vit = 0;
+	                    if(diffTime > 0) {
+	                   		vit = (delta_dist / diffTime) * 3.6
+	                    }
+	                        
+	                    vitArray.push(vit) 
+				}	
+				
+				
+				//console.log(vitArray);
+				
+				// Lat long
+				var pos = $(this).find("Position").each(function() {
+					if(pos != "" && (typeof pos === "undefined")) {
+						var lat = $(this).find("LatitudeDegrees").text();
+						var longi = $(this).find("LongitudeDegrees").text();
+						posArray.push([lat, longi]);
+					}
+				});		
+							
+			}); // for each each Trackpoint
+
+			var lap = $(xml).find("Lap").each(function() {
+				if(lap != "" && (typeof lap === "undefined")) {
+					tot_sec += parseFloat($(this).find("TotalTimeSeconds").text());
+					tot_dist += parseFloat($(this).find("DistanceMeters").text());
+					lapDict = {};
+					lapDict["ave_hb"] = parseInt($(this).find("AverageHeartRateBpm").text());
+					lapDict["max_hb"] = parseInt($(this).find("MaximumHeartRateBpm").text());
+					lapDict["dist"] = parseInt($(this).find("DistanceMeters").text());
+					lapDict["time"] = parseInt($(this).find("TotalTimeSeconds").text());
+					lapsArray.push(lapDict);
+				}
+			});		
+				
+			//console.log(lapsArray);
+			
+			// -----------
+			ave_hb = sum_hb / hbArray.length;
+			
+			// ----------- 			
+			processRideData();
+			drawChartJS();
+		}
+		
+		function processRideData() {
+			
+			//console.log("eee" + diffTimeArray.length);
+			//console.log("eee" + hbArray.length);
+			
+			// --- HB
+            var hb;
+			for (var i = 0; i < hbArray.length ; i++) {
+				hb = hbArray[i];
+            	for(var k in hb_zone) {
+            		if( (hb_zone[k][0] <= hb) && (hb <= hb_zone[k][1]) ) {
+            			hb_zone_out[k] += diffTimeArray[i];
+                        break;
+            		}
+            	}
+            }
+
+            //for(var k in hb_zone_out) {
+            //    console.log("" + k + " " + (hb_zone_out[k]*100.0)/tot_sec_safe);
+            //}
+            
+            // Smoothing
+			hbSmoothArray = hbArray;
+			hbSmoothArray = lowPass(hbSmoothArray, .10);
+			hbSmoothArray = hendersonSmooth(hbSmoothArray, 2);
+			
+				vitSmoothArray = vitArray;
+				vitSmoothArray = lowPass(vitSmoothArray, .50);
+				vitSmoothArray = hendersonSmooth(vitSmoothArray, 3);	
+					
+			// Labels
+			var m = document.getElementById("hb_stat_txt00");
+			m.innerHTML = RA + "(" + Math.round(hb_zone[0][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt01");
+			m.innerHTML = HHMMSS(hb_zone_out[0]) + " (" + round10((hb_zone_out[0]*100.0)/tot_sec_safe) + "% temps)";
+
+			var m = document.getElementById("hb_stat_txt10");
+			m.innerHTML = "EF: " + hb_zone[1][0] + "(" + Math.round(hb_zone[1][0]*100/FCMAX) + "%)" + "→" + hb_zone[1][1]+ "(" + Math.round(hb_zone[1][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt11");
+			m.innerHTML = HHMMSS(hb_zone_out[1]) + " (" + round10((hb_zone_out[1]*100.0)/tot_sec_safe) + "% temps)";
+
+			var m = document.getElementById("hb_stat_txt20");
+			m.innerHTML = "SV1+: " + hb_zone[2][0] + "(" + Math.round(hb_zone[2][0]*100/FCMAX) + "%)" + "→" + hb_zone[2][1]+ "(" + Math.round(hb_zone[2][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt21");
+			m.innerHTML = HHMMSS(hb_zone_out[2]) + " (" + round10((hb_zone_out[2]*100.0)/tot_sec_safe) + "% temps)";
+		
+			var m = document.getElementById("hb_stat_txt30");
+			m.innerHTML = "SV2+: " + hb_zone[3][0] + "(" + Math.round(hb_zone[3][0]*100/FCMAX) + "%)" + "→" + hb_zone[3][1]+ "(" + Math.round(hb_zone[3][1]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt31");
+			m.innerHTML = HHMMSS(hb_zone_out[3]) + " (" + round10((hb_zone_out[3]*100.0)/tot_sec_safe) + "% temps)";
+			
+			var m = document.getElementById("hb_stat_txt40");
+			m.innerHTML = PMA + "(" + Math.round(hb_zone[4][0]*100/FCMAX) + "%)";
+			var m = document.getElementById("hb_stat_txt41");
+			m.innerHTML = HHMMSS(hb_zone_out[4]) + " (" + round10((hb_zone_out[4]*100.0)/tot_sec_safe) + "% temps)";
+			
+			var hb_stat_txt = document.getElementById("hb_stat_txt");
+			hb_stat_txt.style.display = "block";
+		}
+					
+		function round10(n) {
+			return Math.round( n * 10) / 10;
+		}						
+			
+		function drawChartJS() {
+			drawGeneralStat();
+			drawHbPie();
+			drawHbGraph();
+			drawMap();
+		}
+				
+ 		function drawGeneralStat() {
+ 			 // General stat
+ 			 
+			 var s = "";
+			 s += "<div class='bigtext'>";
+			 s += "<b>" + "Distance:&nbsp" + "</b>" + "<span class='bignum'>" + (tot_dist/1000).toFixed(2)+"km" + "</span>" + ", ";
+			 s += "<b>" + "Temps:&nbsp" + "</b>" + "<span class='bignum'>" + HHMMSS(tot_sec) + "</span>"  + ", ";
+			 s += "<b>" + "Vitesse moy:&nbsp" + "</b>" + "<span class='bignum'>" + ((tot_dist/tot_sec)*3.6).toFixed(2) +"km/h" + "</span>"  + ", ";
+			 s += "<b>" + "FCmoy:&nbsp" + "</b>" + "<span class='bignum'>" + ave_hb.toFixed(0)+"bpm" + "("  + Math.round(ave_hb*100/FCMAX) + "%)" + "</span>" + ", ";
+			 s += "<b>" + "FCmax:&nbsp" + "</b>" + "<span class='bignum'>" + max_hb+"bpm" + "(" + Math.round(max_hb*100/FCMAX) + "%)" + "</span>";
+			 s += "</div>";
+			
+			 OutputStat(s);
+			
+			s = "<div>";
+			for (var i = 0; i < lapsArray.length ; i++) {
+				s += "Lap " + (i+1) + ": " + (lapsArray[i]["dist"]/1000).toFixed(2)+"km, " + HHMMSS(lapsArray[i]["time"]) + ", " + ((lapsArray[i]["dist"]/lapsArray[i]["time"])*3.6).toFixed(2) + "km/h," + " " + "FCmoy=" + lapsArray[i]["ave_hb"] + "(" + Math.round(lapsArray[i]["ave_hb"]*100/FCMAX) + "%)" + ", " + "FCmax=" + lapsArray[i]["max_hb"] + "(" + Math.round(lapsArray[i]["max_hb"]*100/FCMAX) + "%)";
+				s += "<br>";
+			}
+			s += "</div>";
+			
+			//console.log(s);
+			
+			OutputLaps(s);
+		}
+		
+		function drawHbPie() {				
+			// ------------------------------------------------------
+			// HB PIE CHART
+			
+			var zones = new Array();
+			zones.push(['HB zones', 'HB zones']);
+			zones.push([PMA, hb_zone_out[4]]);
+			zones.push([SEUIL2, hb_zone_out[3]]);
+			zones.push([SEUIL1, hb_zone_out[2]]);
+			zones.push([EF, hb_zone_out[1]]);
+			zones.push([RA, hb_zone_out[0]]);
+		
+			//console.log(zones);
+			var data = google.visualization.arrayToDataTable(zones);
+	
+	        var options = {
+	          title: 'Zones de fréquence cardiaque',
+	          // chartArea: {width:'80%',height:'80%'},
+  			  colors: ['#DC3912', '#FF9900', '#FCE94F', '#329262', '#66AA00'],
+  			  is3D: true,
+	        };
+	
+	        var chart = new google.visualization.PieChart(document.getElementById('hb_stat_pie_div'));
+	
+	        chart.draw(data, options);
+
+			// ------------------------------------------------------
+			// HB BAR CHART
+			
+			var zones = new Array();
+			zones.push(["HB zones", "HB zones", { role: "style" } ]);
+			zones.push([RA, round10((hb_zone_out[0]*100.0)/tot_sec_safe), "color: #66AA00"]);
+			zones.push([EF, round10((hb_zone_out[1]*100.0)/tot_sec_safe), "color: #329262"]);
+			zones.push([SEUIL1, round10((hb_zone_out[2]*100.0)/tot_sec_safe), "color: #FCE94F"]);
+			zones.push([SEUIL2, round10((hb_zone_out[3]*100.0)/tot_sec_safe), "color: #FF9900"]);
+			zones.push([PMA, round10((hb_zone_out[4]*100.0)/tot_sec_safe), "color: #DC3912"]);
+		
+		      var data = google.visualization.arrayToDataTable(zones);
+		
+		      var view = new google.visualization.DataView(data);
+		      view.setColumns([0, 1,
+		                       { calc: "stringify",
+		                         sourceColumn: 1,
+		                         type: "string",
+		                         role: "annotation" },
+		                       2]);
+		
+		      var options = {
+		        title: "Zones de fréquence cardiaque",
+		        width: 600,
+		        height: 400,
+		        bar: {groupWidth: "100%"},
+		        legend: { position: "none" },
+		      };
+		      var chart = new google.visualization.BarChart(document.getElementById("hb_stat_bar_div"));
+		      chart.draw(view, options);
+		}
+		
+		function drawHbGraph() {
+			// ------------------------------------------------------
+			// HB graph
+			var data = new google.visualization.DataTable();
+
+			graphArray = new Array();
+			
+			//console.log(Math.min(distArray.length, hbSmoothArray.length));
+
+			if(!xAxisIsTime) {
+				// distance
+				data.addColumn('number', 'X');
+
+				for (var i = 0; i < Math.min(distArray.length, hbSmoothArray.length) ; i++) {
+			        if(renderSpeed==1) {
+						graphArray.push([distArray[i], hbSmoothArray[i], vitSmoothArray[i]]);
+			        }
+			        else {
+			        	graphArray.push([distArray[i], hbSmoothArray[i]]);
+			        }
+				}				
+			}
+			else {
+				// time
+				//data.addColumn('datetime', 'X');
+				data.addColumn('number', 'X');
+
+				var all_time = 0;
+				for (var i = 0; i < Math.min(diffTimeArray.length, hbSmoothArray.length) ; i++) {
+					//graphArray.push([new Date(Date.parse(timeArray[i])), hbSmoothArray[i]]);
+					graphArray.push([all_time/60, hbSmoothArray[i]]);
+					all_time += diffTimeArray[i];
+				}				
+			} 
+
+	        data.addColumn('number', 'FC');
+	        if(renderSpeed==1) {
+	       		data.addColumn('number', 'V');
+	        }
+
+	    	data.addRows( graphArray );
+
+			if(xAxisIsTime) {
+				var haxis = {
+	              	title: 'Temps (min)',
+	              	gridlines: {'count': 10},
+	           	};
+			}
+			else {
+				var haxis = {
+	              	title: 'Distance (kms)',
+	              	gridlines: {'count': 10},
+	           	};				
+			}
+
+			if(renderSpeed==1) {
+				var series = {
+		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+		            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
+				};
+			}
+			else {
+				var series = {
+		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				};		
+			}
+	
+	        var options = {
+                  
+	            hAxis: haxis,
+
+	            vAxis: {
+	              title: 'Fréquence cardiaque (bpm)',
+	              gridlines: {'count': 10},
+	            },
+	            	            
+	            series: series,
+          
+	            chartArea: {width:'80%',height:'80%'},
+	            
+	            explorer: {
+	                actions: ['dragToZoom', 'rightClickToReset'],
+	                maxZoomOut: 32,
+	                maxZoomIn: 0.05,
+	                axis: 'horizontal',                
+	                keepInBounds: false
+	            }
+	          };
+		
+			 hbChart = new google.visualization.ComboChart(document.getElementById('hb_graph_div'));
+	         hbChart.draw(data, options);
+	   }
+	   
+	   function drawMap() {
+	          // ---------------------------------------
+
+			  var theColor = "#FF2A00";
+			  var bounds = new google.maps.LatLngBounds();
+			
+			  var mapOptions = {
+			        zoom: 14,
+			        mapTypeId: google.maps.MapTypeId.TERRAIN,
+			        // center: new google.maps.LatLng(44.7753858, -1.9763752),
+			        mapTypeControl: true,
+			        mapTypeControlOptions: {
+			            style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
+			        },
+			        navigationControl: true,
+			        mapTypeId: google.maps.MapTypeId.ROADMAP
+			  };
+			
+			  var map = new google.maps.Map(document.getElementById('map_canvas'),
+			  mapOptions);
+														    	          
+	          var myPathCoords = new Array();
+	          for (var i = 0; i < posArray.length - 1; i++) {
+		          tempLatLng = new google.maps.LatLng(posArray[i][0], posArray[i][1]);
+		          myPathCoords.push(tempLatLng);
+		          bounds.extend(tempLatLng);
+		          map.fitBounds(bounds);
+		      }
+			
+		      for (var i = 0; i < myPathCoords.length - 1; i++) {		
+		          var myPath = new google.maps.Polyline({
+		              path: [myPathCoords[i], myPathCoords[i + 1]],
+		              strokeColor: theColor,
+		              geodesic: true,
+		              strokeOpacity: .65,
+		              strokeWeight: 4,
+		              map: map
+		          });
+		      }
+		
+		      myPath.setMap(map);
+		}
+	
+		// ------- 
+		function HHMMSS(theTime) {
+		    var sec_num = parseInt(theTime, 10); // don't forget the second parm
+		    var hours = Math.floor(sec_num / 3600);
+		    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+		    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+		
+		    if (hours < 10) {
+		        hours = "0" + hours;
+		    }
+		    if (minutes < 10) {
+		        minutes = "0" + minutes;
+		    }
+		    if (seconds < 10) {
+		        seconds = "0" + seconds;
+		    }
+		    var time = hours + ':' + minutes + ':' + seconds;
+		    return time;
+		}
+		
+		// ------- 
+		function trimArray(theArray) { // drops the last value from the array and converts all values to numbers
+		    var i;
+		    var newArray = new Array();
+			
+		    for (i = 0; i < theArray.length - 1; i++) {
+		        newArray[i] = Number(theArray[i]);
+		    }
+		
+		    return newArray;
+		
+		} // end trimArray
+														
+		// ------- 
+		function lowPass(theData, factor) { // low band pass filter where 0 <= factor <= 1
+			try {	
+				var i;
+			    var modArray = new Array();
+			
+			    modArray[0] = (theData[0] + theData[1] + theData[2] + theData[3] + theData[4]) / 5;
+			
+			    if (factor < 0) factor = 0;
+			    else if (factor > 1) factor = 1;
+	
+			    for (i = 1; i < theData.length; i++) {
+			        modArray[i] = theData[i] + factor * (modArray[i - 1] - theData[i]);
+			    }
+			
+			    return modArray;
+			}
+			catch(err) {
+				console.log(err);
+			}
+		} // end lowPass
+			
+		// --------	
+		function hendersonSmooth(theData, factor) { // use Henderson smoothing to smooth data
+		
+		    var i;
+		    var modArray = new Array();
+		    var eoArray = theData.length;
+		
+		    if (factor == 1) { // 11 factor
+		        for (i = 5; i < eoArray - 5; i++) {
+		            modArray[i] = -0.02787 * theData[i - 5] + -0.0268 * theData[i - 4] + 0.03572 * theData[i - 3] + 0.14127 * theData[i - 2] + 0.23869 * theData[i - 1] + 0.27794 * theData[i] + 0.23869 * theData[i + 1] + 0.14127 * theData[i + 2] + 0.03572 * theData[i + 3] + -0.0268 * theData[i + 4] + -0.02787 * theData[i + 5];
+		        } // end for i
+		
+		        for (i = 0; i < 5; i++) {
+		            modArray[i] = 0.57972 * theData[i] + 0.42429 * theData[i + 1] + 0.18536 * theData[i + 2] + -0.03384 * theData[i + 3] + -0.15554 * theData[i + 4];
+		        } // end for i little loop
+		
+		        for (i = eoArray - 1; i >= eoArray - 5; i--) {
+		            modArray[i] = 0.57972 * theData[i] + 0.42429 * theData[i - 1] + 0.18536 * theData[i - 2] + -0.03384 * theData[i - 3] + -0.15554 * theData[i - 4];
+		        } // end for i little loop
+		    } // end else if factor == 1
+		
+		
+		    else if (factor == 2) { // 13 factor
+		        for (i = 6; i < eoArray - 6; i++) {
+		            modArray[i] = -0.01935 * theData[i - 6] + -0.02786 * theData[i - 5] + 0.06549 * theData[i - 3] + 0.14736 * theData[i - 2] + 0.21434 * theData[i - 1] + 0.24006 * theData[i] + 0.21434 * theData[i + 1] + 0.14736 * theData[i + 2] + 0.06549 * theData[i + 3] + -0.02786 * theData[i + 5] + -0.01935 * theData[i + 6];
+		        } // end for i
+		
+		        for (i = 0; i < 6; i++) {
+		            modArray[i] = 0.42113 * theData[i] + 0.35315 * theData[i + 1] + 0.2439 * theData[i + 2] + 0.11977 * theData[i + 3] + 0.01202 * theData[i + 4] + -0.05812 * theData[i + 5] + -0.09187 * theData[i + 6];
+		        } // end for i little loop
+		
+		        for (i = eoArray - 1; i >= eoArray - 6; i--) {
+		            modArray[i] = 0.42113 * theData[i] + 0.35315 * theData[i - 1] + 0.2439 * theData[i - 2] + 0.11977 * theData[i - 3] + 0.01202 * theData[i - 4] + -0.05812 * theData[i - 5] + -0.09187 * theData[i - 6];
+		        } // end for i little loop
+		    } // end else if factor == 2
+		
+		
+		    else if (factor == 3) { // 23 factor
+		        for (i = 11; i < eoArray - 11; i++) {
+		            modArray[i] = -0.00428 * theData[i - 11] + -0.01092 * theData[i - 10] + -0.01569 * theData[i - 9] + -0.01453 * theData[i - 8] + -0.00495 * theData[i - 7] + 0.01343 * theData[i - 6] + 0.03893 * theData[i - 5] + 0.0683 * theData[i - 4] + 0.0974 * theData[i - 3] + 0.12195 * theData[i - 2] + 0.13832 * theData[i - 1] + 0.14406 * theData[i] + 0.13832 * theData[i + 1] + 0.12195 * theData[i + 2] + 0.0974 * theData[i + 3] + 0.0683 * theData[i + 4] + 0.03893 * theData[i + 5] + 0.01343 * theData[i + 6] + -0.00495 * theData[i + 7] + -0.01453 * theData[i + 8] + -0.01569 * theData[i + 9] + -0.01092 * theData[i + 10] + -0.00428 * theData[i + 11];
+		        } // end for i
+		
+		        for (i = 0; i < 11; i++) {
+		            modArray[i] = 0.28801 * theData[i] + 0.26258 * theData[i + 1] + 0.22652 * theData[i + 2] + 0.18228 * theData[i + 3] + 0.1335 * theData[i + 4] + 0.08444 * theData[i + 5] + 0.03925 * theData[i + 6] + 0.00119 * theData[i + 7] + -0.02809 * theData[i + 8] + -0.04893 * theData[i + 9] + -0.06385 * theData[i + 10] + -0.0769 * theData[i + 11];
+		        } // end for little i
+		
+		        for (i = eoArray - 1; i >= eoArray - 11; i--) {
+		            modArray[i] = 0.28801 * theData[i] + 0.26258 * theData[i - 1] + 0.22652 * theData[i - 2] + 0.18228 * theData[i - 3] + 0.1335 * theData[i - 4] + 0.08444 * theData[i - 5] + 0.03925 * theData[i - 6] + 0.00119 * theData[i - 7] + -0.02809 * theData[i - 8] + -0.04893 * theData[i - 9] + -0.06385 * theData[i - 10] + -0.0769 * theData[i - 11];
+		        } // end for little i
+		    } // end else if factor == 3
+		
+		    else if (factor == 4) { // 23 factor
+		        theData = lowPass(theData, .85);
+		        for (i = 11; i < eoArray - 11; i++) {
+		            modArray[i] = -0.00428 * theData[i - 11] + -0.01092 * theData[i - 10] + -0.01569 * theData[i - 9] + -0.01453 * theData[i - 8] + -0.00495 * theData[i - 7] + 0.01343 * theData[i - 6] + 0.03893 * theData[i - 5] + 0.0683 * theData[i - 4] + 0.0974 * theData[i - 3] + 0.12195 * theData[i - 2] + 0.13832 * theData[i - 1] + 0.14406 * theData[i] + 0.13832 * theData[i + 1] + 0.12195 * theData[i + 2] + 0.0974 * theData[i + 3] + 0.0683 * theData[i + 4] + 0.03893 * theData[i + 5] + 0.01343 * theData[i + 6] + -0.00495 * theData[i + 7] + -0.01453 * theData[i + 8] + -0.01569 * theData[i + 9] + -0.01092 * theData[i + 10] + -0.00428 * theData[i + 11];
+		        } // end for i
+		        for (i = 0; i < 11; i++) {
+		            modArray[i] = 0.28801 * theData[i] + 0.26258 * theData[i + 1] + 0.22652 * theData[i + 2] + 0.18228 * theData[i + 3] + 0.1335 * theData[i + 4] + 0.08444 * theData[i + 5] + 0.03925 * theData[i + 6] + 0.00119 * theData[i + 7] + -0.02809 * theData[i + 8] + -0.04893 * theData[i + 9] + -0.06385 * theData[i + 10] + -0.0769 * theData[i + 11];
+		        } // end for little i
+		
+		        for (i = eoArray - 1; i >= eoArray - 11; i--) {
+		            modArray[i] = 0.28801 * theData[i] + 0.26258 * theData[i - 1] + 0.22652 * theData[i - 2] + 0.18228 * theData[i - 3] + 0.1335 * theData[i - 4] + 0.08444 * theData[i - 5] + 0.03925 * theData[i - 6] + 0.00119 * theData[i - 7] + -0.02809 * theData[i - 8] + -0.04893 * theData[i - 9] + -0.06385 * theData[i - 10] + -0.0769 * theData[i - 11];
+		        } // end for little i
+		    } // end else if factor == 4
+		
+		
+		    else { // else no smoothing was selected
+		        return theData;
+		    }
+		
+		    return modArray;
+		
+		} // end of hendersonSmooth
+																								
+		// ------- 
+		function UploadIt(file) {
+			var xhr = new XMLHttpRequest();
+			
+			if (xhr.upload) { // && file.type == "image/jpeg") {
+	
+		        xhr.onload = function() {
+				  //console.log("success2");
+		        }; 
+	
+				// create progress bar
+				var o = document.getElementById("progress");
+				while (o.hasChildNodes()) {
+	              o.removeChild(o.lastChild);
+				}
+	
+				var progress = o.appendChild(document.createElement("p"));
+				progress.appendChild(document.createTextNode(file.name));
+				
+				//OutputFileInfo(file.name);
+	
+				// progress bar
+				xhr.upload.addEventListener("progress", function(e) {
+					var pc = parseInt(100 - (e.loaded / e.total * 100));
+					progress.style.backgroundPosition = pc + "% 0";
+				}, false);
+	
+				// file received
+				xhr.onreadystatechange = function(e) {
+					if (xhr.readyState == 4) {
+						progress.className = (xhr.status == 200 ? "success" : "failure");
+	
+						if(xhr.status == 200) {
+							console.log("success");
+							google.setOnLoadCallback(drawChart( JSON.parse(xhr.responseText) ));
+						}
+						else {  
+	          				Output(xhr.statusText);  
+	        			}  
+	        		
+	        		//Output(xhr.responseText);
+	   				}
+				};
+	
+				// start upload
+				xhr.open("POST", document.getElementById("upload").action, true);
+				xhr.setRequestHeader("X_FILENAME", file.name);
+				xhr.send(file);
+			}
+		}
+		
+		// ------- initialize
+		function Init() {
+	
+			google.load("visualization", "1", {packages:["corechart"]});
+	
+			var fileselect = document.getElementById("fileselect"),
+				filedrag = document.getElementById("filedrag"),
+				hb_graph_div = document.getElementById("hb_graph_div"),
+				submitbutton = document.getElementById("submitbutton");
+	
+			// file select
+			fileselect.addEventListener("change", FileSelectHandler, false);
+	
+			// is XHR2 available?
+			var xhr = new XMLHttpRequest();
+			if (xhr.upload) {
+	
+				// file drop
+				filedrag.addEventListener("dragover", FileDragHover, false);
+				filedrag.addEventListener("dragleave", FileDragHover, false);
+				filedrag.addEventListener("drop", FileSelectHandler, false);
+				filedrag.style.display = "block";
+	
+				hb_graph_div.addEventListener("dragover", FileDragHover, false);
+				hb_graph_div.addEventListener("dragleave", FileDragHover, false);
+				hb_graph_div.addEventListener("drop", FileSelectHandler, false);
+				
+				// remove submit button
+				submitbutton.style.display = "none";
+			}
+	
+		}
+	
+		// ------- call initialization file
+		if (window.File && window.FileList && window.FileReader) {
+			Init();
+		}
+		
+	</script>
+
+</body></html>
