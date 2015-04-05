@@ -139,7 +139,7 @@
 	<div id="messages" style="display:none;"></div>
 	
     <div data-role="fieldcontain" data-mini="true">
-        <table>
+        <table style="display:inline;">
           <tr>
             <td>
               <br>
@@ -152,8 +152,22 @@
               </select>
             </td>
           </tr>
+        </table>       
+        <table style="display:inline;">
+          <tr>
+            <td>
+              <br>
+              <label id="hbPer100Label">FC pourcent</label>&nbsp;
+            </td>
+            <td>
+              <select id="hbPer100Switch" data-mini="true" data-role="slider">
+                <option value="0" selected="selected">0</option>
+                <option value="1">1</option>
+              </select>
+            </td>
+          </tr>
         </table>
-    </div>
+    <div>
       
 	<br>
 	<div id="general_stat" class="center"></div>
@@ -301,6 +315,26 @@
 					// TODO
 				}
 			});
+			
+			// hbPer100Switch
+			$("#hbPer100Switch").bind( "change", function(event, ui) {
+	  			var hbPer100SwitchValue = $("#hbPer100Switch").val();
+				hbIsPer100 = hbPer100SwitchValue;
+				
+				// reload
+				if(globalFiles.length <= 1) {
+					if(hbChart) {
+						hbChart.clearChart();
+					}
+					drawHbGraph();
+				}
+				else {
+					if(hbChart) {
+						hbChart.clearChart();
+					}
+					drawHbGraphMany();
+				}
+			});
 		}	
 			
 		// ------------------------
@@ -345,6 +379,8 @@
         var FCR   = "45";
         
 		var hbArrayMany = new Array();
+		var hbSmooth100ArrayMany = new Array();
+		var hbArrayOutMany = new Array();
 		var timeArrayMany = new Array();
 		var diffTimeArrayMany = new Array();
 		var distArrayMany = new Array();
@@ -366,6 +402,8 @@
 			}
 			
 			hbArrayMany = new Array();
+			hbArrayManyOut = new Array();
+			hbSmooth100ArrayMany = new Array();
 			timeArrayMany = new Array();
 			diffTimeArrayMany = new Array();
 			distArrayMany = new Array();
@@ -450,7 +488,9 @@
 			// all files parsed
 			if(nbFilesParsed == nbFiles) {
 				processManyFiles();
-				drawChartsMany();
+				drawGeneralStatMany();
+				drawHbGraphMany();
+				drawPieChartsMany();
 			}
 		}
 		
@@ -473,11 +513,16 @@
 			hbSmoothArrayMany = hbArrayMany;
 			hbSmoothArrayMany = lowPass(hbSmoothArrayMany, .10);
 			hbSmoothArrayMany = hendersonSmooth(hbSmoothArrayMany, 2);
+			
+			// HB rate %
+			for (var i = 0; i < Math.min(distArrayMany.length, hbSmoothArrayMany.length) ; i++) {
+				hbSmooth100ArrayMany[i] = hbSmoothArrayMany[i]*100/FCMAX;
+			}
 		}
 		
 		// ----------------
 
-		function drawChartsMany() {
+		function drawGeneralStatMany() {
 			
 			// General stat
 			var s = "";
@@ -491,20 +536,27 @@
 			
 			 OutputStat(s);
 			 OutputLaps("");
-
+		}
+		
+		function drawHbGraphMany() {
 			// HB graph
 			var data = new google.visualization.DataTable();
 
 			graphArray = new Array();
 			
-			//console.log(Math.min(distArrayMany.length, hbSmoothArrayMany.length));
-
+			if(hbIsPer100 == 1) {
+				hbArrayOutMany = hbSmooth100ArrayMany;
+			}
+			else {
+				hbArrayOutMany = hbSmoothArrayMany;
+			}
+			
 			if(!xAxisIsTime) {
 				// distance
 				data.addColumn('number', 'X');
 
-				for (var i = 0; i < Math.min(distArrayMany.length, hbSmoothArrayMany.length) ; i++) {
-					graphArray.push([distArrayMany[i], hbSmoothArrayMany[i]]);
+				for (var i = 0; i < Math.min(distArrayMany.length, hbArrayOutMany.length) ; i++) {
+					graphArray.push([distArrayMany[i], hbArrayOutMany[i]]);
 				}				
 			}
 			else {
@@ -513,8 +565,8 @@
 				data.addColumn('number', 'X');
 
 				var all_time_many = 0;
-				for (var i = 0; i < Math.min(diffTimeArrayMany.length, hbSmoothArrayMany.length) ; i++) {
-					graphArray.push([all_time_many/60, hbSmoothArrayMany[i]]);
+				for (var i = 0; i < Math.min(diffTimeArrayMany.length, hbArrayOutMany.length) ; i++) {
+					graphArray.push([all_time_many/60, hbArrayOutMany[i]]);
 					all_time_many += diffTimeArrayMany[i];
 				}				
 			} 
@@ -565,7 +617,9 @@
 		
 			 hbChart = new google.visualization.ComboChart(document.getElementById('hb_graph_div'));
 	         hbChart.draw(data, options);
-	         
+	   }
+	   
+	   function drawPieChartsMany() {
 			// ------------------------------------------------------
 			// HB PIE CHART
 			
@@ -652,7 +706,7 @@
 			var hb_stat_txt = document.getElementById("hb_stat_txt");
 			hb_stat_txt.style.display = "block";
 			
-		}
+		} // end drawPieChartsMany
 		
 		// ----------------------------------------------------------------------------------------------------------
 		// ----------------------------------------------------------------------------------------------------------
@@ -706,8 +760,12 @@
 		var lapsArray = new Array();
 
 		var hbArray = new Array();
+		var hbArrayOut = new Array();
 		var hbArrayTime = new Array();
 		var hbSmoothArray = new Array();
+		var hbSmooth100Array = new Array();
+		var hbIsPer100 = 0;
+		
 		var distArray = new Array();
 		var posArray = new Array();
 		var vitArray = new Array();
@@ -721,8 +779,11 @@
 			timeArray = new Array();
 			diffTimeArray = new Array();
 			hbArray = new Array();
+			hbArrayOut = new Array();
 			hbArrayTime = new Array();
 			hbSmoothArray = new Array();
+			hbSmooth100Array = new Array();
+			hbIsPer100 = 0;
 			hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 			lapsArray = new Array();
 
@@ -878,10 +939,14 @@
 			hbSmoothArray = hbArray;
 			hbSmoothArray = lowPass(hbSmoothArray, .10);
 			hbSmoothArray = hendersonSmooth(hbSmoothArray, 2);
+			// HB rate %
+			for (var i = 0; i < Math.min(distArray.length, hbSmoothArray.length) ; i++) {
+				hbSmooth100Array[i] = hbSmoothArray[i]*100/FCMAX;
+			}
 			
-				vitSmoothArray = vitArray;
-				vitSmoothArray = lowPass(vitSmoothArray, .50);
-				vitSmoothArray = hendersonSmooth(vitSmoothArray, 3);	
+			vitSmoothArray = vitArray;
+			vitSmoothArray = lowPass(vitSmoothArray, .50);
+			vitSmoothArray = hendersonSmooth(vitSmoothArray, 3);	
 					
 			// Labels
 			var m = document.getElementById("hb_stat_txt00");
@@ -1012,21 +1077,28 @@
 			// ------------------------------------------------------
 			// HB graph
 			var data = new google.visualization.DataTable();
-
+			
+			if(hbIsPer100 == 1) {
+				hbArrayOut = hbSmooth100Array;
+			}
+			else {
+				hbArrayOut = hbSmoothArray;
+			}
+			
 			graphArray = new Array();
 			
-			//console.log(Math.min(distArray.length, hbSmoothArray.length));
+			//console.log(Math.min(distArray.length, hbArrayOut.length));
 
 			if(!xAxisIsTime) {
 				// distance
 				data.addColumn('number', 'X');
 
-				for (var i = 0; i < Math.min(distArray.length, hbSmoothArray.length) ; i++) {
+				for (var i = 0; i < Math.min(distArray.length, hbArrayOut.length) ; i++) {
 			        if(renderSpeed==1) {
-						graphArray.push([distArray[i], hbSmoothArray[i], vitSmoothArray[i]]);
+						graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i]]);
 			        }
 			        else {
-			        	graphArray.push([distArray[i], hbSmoothArray[i]]);
+			        	graphArray.push([distArray[i], hbArrayOut[i]]);
 			        }
 				}				
 			}
@@ -1036,8 +1108,8 @@
 				data.addColumn('number', 'X');
 
 				var all_time = 0;
-				for (var i = 0; i < Math.min(diffTimeArray.length, hbSmoothArray.length) ; i++) {
-					//graphArray.push([new Date(Date.parse(timeArray[i])), hbSmoothArray[i]]);
+				for (var i = 0; i < Math.min(diffTimeArray.length, hbArrayOut.length) ; i++) {
+					//graphArray.push([new Date(Date.parse(timeArray[i])), hbArrayOut[i]]);
 					graphArray.push([all_time/60, hbSmoothArray[i]]);
 					all_time += diffTimeArray[i];
 				}				
