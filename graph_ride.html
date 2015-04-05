@@ -106,6 +106,7 @@
     </style>
 
 	<link rel="stylesheet" href="jquery.mobile-1.4.5.min.css" />
+	
 </head>
 
     <!-------------------------------------------------------------------------------------------------------------------------->
@@ -138,7 +139,43 @@
 	<div id="progress" style="display:none;"></div>
 	<div id="messages" style="display:none;"></div>
 	
-    <div data-role="fieldcontain" data-mini="true">
+	<div id="heartRateInput" style="width:100%; margin-left:auto; margin-right:auto; text-align: center;">
+		<form name="fcMaxForm" id="fcMaxForm_ID">			
+			<table style="display:inline;">
+	          <tr>
+	            <td>
+	              <br>
+	              <label>FC Max:</label> &nbsp;
+	            </td>
+	            <td>
+	              <input type="text" name="FCMAX_I" id="FCMAX_I" value="195" size="3" maxlength="3"/>
+	            </td>
+	            
+	            <td>
+	              <br>
+	              <label>SV1:</label> &nbsp;
+	            </td>
+	            <td>
+	              <input type="text" name="SV1_I" id="SV1_I" value="155" size="3" maxlength="3">
+	            </td>
+
+	            <td>
+	              <br>
+	              <label>SV2:</label> &nbsp;
+	            </td>
+	            <td>
+	              <input type="text" name="SV2_I" id="SV2_I" value="175" size="3" maxlength="3">
+	            </td>
+	            		            
+	            <td>
+	              <input type="button" name="saveFC" id="saveFC_I" value="Save">
+	            </td>
+	          </tr>
+	        </table>
+		</form>	
+	</div>
+														
+    <div id="switchesDiv" data-role="fieldcontain" data-mini="true" style="display:none;">
         <table style="display:inline;">
           <tr>
             <td>
@@ -277,6 +314,8 @@
 	
 		// ------- file selection
 		function FileSelectHandler(e) {
+			document.getElementById("switchesDiv").style.display = "block";
+			
 			// switches
 			ManageSwitches();
 			
@@ -299,6 +338,7 @@
 	
 		// ------- switches
 		function ManageSwitches() {
+			
 			// speed
 			$("#showSpeedSwitch").bind( "change", function(event, ui) {
 	  			var showSpeedSwitchValue = $("#showSpeedSwitch").val();
@@ -367,16 +407,17 @@
 		var xAxisIsTime = false;
 		
 		var hbChart;
-		var hb_zone = {0:[0,124], 1:[125, 155], 2:[156,175], 3:[176,189], 4:[190,240]};
+		var hb_zone;// = {0:[0,124], 1:[125, 155], 2:[156,175], 3:[176,189], 4:[190,240]};
         var hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
         
-		var RA = "RA: <" + hb_zone[0][1];
-        var EF = "EF: " + hb_zone[1][0] + "→" + hb_zone[1][1];
-        var SEUIL1 = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
-        var SEUIL2 = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
-        var PMA = "PMA: >" + hb_zone[4][0];
-        var FCMAX = "195";
-        var FCR   = "45";
+		var RA;// = "RA: <" + hb_zone[0][1];
+        var EF;// = "EF: " + hb_zone[1][0] + "→" + hb_zone[1][1];
+        var SEUIL1;// = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
+        var SEUIL2;// = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
+        var PMA;// = "PMA: >" + hb_zone[4][0];
+        var FCMAX;// = "195";
+        var SV1;// = "155";
+        var SV2;// = "175";
         
 		var hbArrayMany = new Array();
 		var hbSmooth100ArrayMany = new Array();
@@ -595,7 +636,7 @@
 	            hAxis: haxis,
 
 	            vAxis: {
-	              title: 'Fréquence cardiaque (bpm)',
+	              title: 'Fréquence cardiaque',
 	              gridlines: {'count': 10},
 	            },
 	            	            
@@ -1152,7 +1193,7 @@
 	            hAxis: haxis,
 
 	            vAxis: {
-	              title: 'Fréquence cardiaque (bpm)',
+	              title: 'Fréquence cardiaque',
 	              gridlines: {'count': 10},
 	            },
 	            	            
@@ -1397,8 +1438,36 @@
 		}
 		
 		// ------- initialize
+
+		function storeCustomData() {
+		    if (window.localStorage) {
+		        var i = 0;
+		        var localStr = "";
+		        localStr = FCMAX + "," + SV1 + "," + SV2;
+		        localStorage["custStr"] = localStr;
+		
+		        localStorage["dataLoaded"] = "true";
+		    }
+		    else {
+		        alert("This browser doesn't support data storage. To save your customized input you'll either need to upgrade your browser or change the permissions on your existing browser.");
+		    }
+		}
+
+		// -------
+		function getCustomData() {
+			    localStr = "";
+			    localStr = localStorage["custStr"];
+			    theVals = localStr.split(",");
+			
+			    FCMAX = Number(theVals[0]);
+			    SV1 = Number(theVals[1]);
+			    SV2 = Number(theVals[2]);
+			    
+				hb_zone = {0:[0,Math.floor(FCMAX*0.65)], 1:[Math.ceil(FCMAX*0.65), SV1], 2:[SV1+1,SV2], 3:[SV2+1,Math.floor(FCMAX*0.96)], 4:[Math.ceil(FCMAX*0.96),240]};
+		}
+																												
+		// -------
 		function Init() {
-	
 			google.load("visualization", "1", {packages:["corechart"]});
 	
 			var fileselect = document.getElementById("fileselect"),
@@ -1426,12 +1495,45 @@
 				// remove submit button
 				submitbutton.style.display = "none";
 			}
-	
 		}
-	
-		// ------- call initialization file
+
 		if (window.File && window.FileList && window.FileReader) {
 			Init();
+		}
+					
+		window.onload = function () {
+		    var anyData = "true";
+			anyData = localStorage["dataLoaded"];
+		    if (anyData == 'true') {
+		        getCustomData();
+		
+		        $("#FCMAX_I").val(FCMAX);
+		        $("#SV1_I").val(SV1);
+		        $("#SV2_I").val(SV2);
+		    }
+		    else {
+		    	FCMAX = 195;
+			    SV1 = 155;
+			    SV2 = 175;
+			    hb_zone = {0:[0,124], 1:[125, 155], 2:[156,175], 3:[176,189], 4:[190,240]};
+		    }
+
+		    RA = "RA: <" + hb_zone[0][1];
+    		EF = "EF: " + hb_zone[1][0] + "→" + hb_zone[1][1];
+    		SEUIL1 = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
+    		SEUIL2 = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
+    		PMA = "PMA: >=" + hb_zone[4][0];
+        		
+			// FC custom values
+			$("#saveFC_I").click(function () {
+				FCMAX = document.getElementById('FCMAX_I').value;
+				SV1 = document.getElementById('SV1_I').value;
+				SV2 = document.getElementById('SV2_I').value;
+				hb_zone = {0:[0,Math.floor(FCMAX*0.65)], 1:[Math.ceil(FCMAX*0.65), SV1], 2:[SV1+1,SV2], 3:[SV2+1,Math.floor(FCMAX*0.96)], 4:[Math.ceil(FCMAX*0.96),240]};
+
+		        storeCustomData();
+		    }); // end of customize HR zones button
+		    
 		}
 		
 	</script>
