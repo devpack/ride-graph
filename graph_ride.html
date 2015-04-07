@@ -26,7 +26,7 @@
 		}	
 																    
         body {
-	        font-family: "Segoe UI", Tahoma, Helvetica, freesans, sans-serif;
+	        font-family: Courier New, Courier, Prestige, monospace;
 	        font-size: 90%;
 	        margin: 10px;
 	        color: #333;
@@ -194,6 +194,20 @@
           <tr>
             <td>
               <br>
+              <label id="showAltiLabel">Altitude</label>&nbsp;
+            </td>
+            <td>
+              <select id="showAltiSwitch" data-mini="true" data-role="slider">
+                <option value="0" selected="selected">0</option>
+                <option value="1">1</option>
+              </select>
+            </td>
+          </tr>
+        </table> 
+        <table style="display:inline;">
+          <tr>
+            <td>
+              <br>
               <label id="hbPer100Label">FC pourcent</label>&nbsp;
             </td>
             <td>
@@ -208,7 +222,7 @@
       
 	<br>
 	<div id="general_stat" class="center"></div>
-	<div id="laps_stat" class="center"></div>
+	<div id="laps_stat" class="center" style="font-family: Courier New, Courier, Prestige, monospace;"></div>
 
 	<div id="hb_graph_div" style="min-height: 400px;" ></div>
 	<br>
@@ -227,50 +241,10 @@
 		</table>
 	</div>
 	
-	<div id="hb_stat_txt" style="display:none; font-size: 120%;">
-		<table border="1" cellpadding="4" style="margin-left:auto; margin-right:auto;">
-			<tr>
-				<td>
-					<div id="hb_stat_txt00" style="text-align:: left;">
-				</td>
-				<td>
-					<div id="hb_stat_txt01" style="text-align:: left;">
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<div id="hb_stat_txt10" style="text-align:: left;">
-				</td>
-				<td>
-					<div id="hb_stat_txt11" style="text-align:: left;">
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<div id="hb_stat_txt20" style="text-align:: left;">
-				</td>
-				<td>
-					<div id="hb_stat_txt21" style="text-align:: left;">
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<div id="hb_stat_txt30" style="text-align:: left;">
-				</td>
-				<td>
-					<div id="hb_stat_txt31" style="text-align:: left;">
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<div id="hb_stat_txt40" style="text-align:: left;">
-				</td>
-				<td>
-					<div id="hb_stat_txt41" style="text-align:: left;">
-				</td>
-			</tr>
-		</table>
+	<div class="center">
+		<div id="hb_stats" style="font-family: Courier New, Courier, Prestige, monospace; display:none; font-size: 120%;"></div>
 	</div>
+	<br>
 	<br>
 	
 	<div id="map_canvas" style="min-height: 1200px; width:80%; text-align: center; margin-left: auto; margin-right: auto"></div>
@@ -303,7 +277,14 @@
 			var m = document.getElementById("laps_stat");
 			m.innerHTML = msg;
 		}
-					
+				
+		// ------- output in tag
+		function OutputInTag(msg, id) {
+			var m = document.getElementById(id);
+			m.innerHTML = msg;
+			m.style.display = "block";
+		}
+							
 		// ------- file drag hover
 		function FileDragHover(e) {
 			e.stopPropagation();
@@ -355,7 +336,24 @@
 					// TODO
 				}
 			});
-			
+
+			// altitude
+			$("#showAltiSwitch").bind( "change", function(event, ui) {
+	  			var showAltiSwitchValue = $("#showAltiSwitch").val();
+				renderAlti = showAltiSwitchValue;
+				
+				// reload
+				if(globalFiles.length <= 1) {
+					if(hbChart) {
+						hbChart.clearChart();
+					}
+					drawHbGraph();
+				}
+				else {
+					// TODO
+				}
+			});
+						
 			// hbPer100Switch
 			$("#hbPer100Switch").bind( "change", function(event, ui) {
 	  			var hbPer100SwitchValue = $("#hbPer100Switch").val();
@@ -402,6 +400,7 @@
 		// ------------------------
 		var globalFiles;
 		var renderSpeed = 0;
+		var renderAlti = 0;
 		
 		var interpolMissingHB = true;
 		var xAxisIsTime = false;
@@ -514,6 +513,7 @@
 				
 			}); // for each each Trackpoint
 			
+			// laps
 			var lap = $(xml).find("Lap").each(function() {
 				if(lap != "" && (typeof lap === "undefined")) {
 					tot_sec_many += parseFloat($(this).find("TotalTimeSeconds").text());
@@ -719,35 +719,65 @@
 		      
 		    // -------------------------------------------------------------------------------------------------
 			// Labels
-			var m = document.getElementById("hb_stat_txt00");
-			m.innerHTML = RA + "(" + Math.round(hb_zone[0][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt01");
-			m.innerHTML = HHMMSS(hb_zone_out[0]) + " (" + round10((hb_zone_out[0]*100.0)/tot_sec_safe_many) + "% temps)";
-
-			var m = document.getElementById("hb_stat_txt10");
-			m.innerHTML = "EF: " + hb_zone[1][0] + "(" + Math.round(hb_zone[1][0]*100/FCMAX) + "%)" + "→" + hb_zone[1][1]+ "(" + Math.round(hb_zone[1][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt11");
-			m.innerHTML = HHMMSS(hb_zone_out[1]) + " (" + round10((hb_zone_out[1]*100.0)/tot_sec_safe_many) + "% temps)";
-
-			var m = document.getElementById("hb_stat_txt20");
-			m.innerHTML = "SV1+: " + hb_zone[2][0] + "(" + Math.round(hb_zone[2][0]*100/FCMAX) + "%)" + "→" + hb_zone[2][1]+ "(" + Math.round(hb_zone[2][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt21");
-			m.innerHTML = HHMMSS(hb_zone_out[2]) + " (" + round10((hb_zone_out[2]*100.0)/tot_sec_safe_many) + "% temps)";
-		
-			var m = document.getElementById("hb_stat_txt30");
-			m.innerHTML = "SV2+: " + hb_zone[3][0] + "(" + Math.round(hb_zone[3][0]*100/FCMAX) + "%)" + "→" + hb_zone[3][1]+ "(" + Math.round(hb_zone[3][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt31");
-			m.innerHTML = HHMMSS(hb_zone_out[3]) + " (" + round10((hb_zone_out[3]*100.0)/tot_sec_safe_many) + "% temps)";
-			
-			var m = document.getElementById("hb_stat_txt40");
-			m.innerHTML = PMA + "(" + Math.round(hb_zone[4][0]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt41");
-			m.innerHTML = HHMMSS(hb_zone_out[4]) + " (" + round10((hb_zone_out[4]*100.0)/tot_sec_safe_many) + "% temps)";
-			
-			var hb_stat_txt = document.getElementById("hb_stat_txt");
-			hb_stat_txt.style.display = "block";
+			hb_stats_text(tot_sec_safe_many);
 			
 		} // end drawPieChartsMany
+		
+		function sanatizePercent(x) {
+			if(x<10) {
+				if(x==0) {
+					return "0.00";
+				}
+				else {
+					return "0" + x;
+				}
+			}
+			else {
+				if(x==1000) {
+					return "100";
+				}
+				else {
+					return x;
+				}
+			}
+		}
+		
+		// ----------------------------------------------------------------------------------------------------------
+
+		function hb_stats_text(secs) {
+			var _tot_sec = secs;
+			var s = "<div>";
+			s += "RA &nbsp: <" + hb_zone[0][1] + "(" + Math.round(hb_zone[0][1]*100/FCMAX) + "%)";
+			s += "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
+			s += "&nbsp|&nbsp";
+			s += "<b>" + HHMMSS(hb_zone_out[0]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[0]*100.0)/_tot_sec)) + "%)";
+			s += "<br>";
+			
+			s += "EF &nbsp: " + hb_zone[1][0] + "(" + Math.round(hb_zone[1][0]*100/FCMAX) + "%)" + "→" + hb_zone[1][1]+ "(" + Math.round(hb_zone[1][1]*100/FCMAX) + "%)";
+			s += "&nbsp|&nbsp";
+			s += "<b>" + HHMMSS(hb_zone_out[1]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[1]*100.0)/_tot_sec)) + "%)";
+			s += "<br>";
+
+			s += "SV1+: " + hb_zone[2][0] + "(" + Math.round(hb_zone[2][0]*100/FCMAX) + "%)" + "→" + hb_zone[2][1]+ "(" + Math.round(hb_zone[2][1]*100/FCMAX) + "%)";
+			s += "&nbsp|&nbsp";
+			s += "<b>" + HHMMSS(hb_zone_out[2]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[2]*100.0)/_tot_sec)) + "%)";
+			s += "<br>";
+
+			s += "SV2+: " + hb_zone[3][0] + "(" + Math.round(hb_zone[3][0]*100/FCMAX) + "%)" + "→" + hb_zone[3][1]+ "(" + Math.round(hb_zone[3][1]*100/FCMAX) + "%)";
+			s += "&nbsp|&nbsp";
+			s += "<b>" + HHMMSS(hb_zone_out[3]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[3]*100.0)/_tot_sec)) + "%)";
+			s += "<br>";
+			
+			s += "PMA : >=" + hb_zone[4][0] + "(" + Math.round(hb_zone[4][0]*100/FCMAX) + "%)";
+			s += "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
+			s += "&nbsp|&nbsp";
+			s += "<b>" + HHMMSS(hb_zone_out[4]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[4]*100.0)/_tot_sec)) + "%)";
+			s += "<br>";
+								
+			s += "</div>";
+			
+			OutputInTag(s, "hb_stats");
+		}
 		
 		// ----------------------------------------------------------------------------------------------------------
 		// ----------------------------------------------------------------------------------------------------------
@@ -807,6 +837,8 @@
 		var hbSmooth100Array = new Array();
 		var hbIsPer100 = 0;
 		
+		var altiArray = new Array();
+		
 		var distArray = new Array();
 		var posArray = new Array();
 		var vitArray = new Array();
@@ -828,6 +860,7 @@
 			hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 			lapsArray = new Array();
 
+			altiArray = new Array();
 			distArray = new Array();
 			posArray = new Array();
 			tot_sec = 0;
@@ -895,13 +928,19 @@
 					}
 				}
 
+				// altitude
+				var alti = $(this).find("AltitudeMeters").text();
+				if(alti != "") {
+					altiArray.push(parseFloat(alti));
+				}
+				
 				if(t != "") {
 					lastTime = t;
 				}
 				// distance
 				var dist = $(this).find("DistanceMeters").text();
 				if(dist != "") {
-					var d = parseFloat(dist)
+					var d = parseFloat(dist);
 					distArray.push( d/1000.0 );
 					
 						var delta_dist = d - prev_dist;
@@ -912,10 +951,10 @@
 	                    
 	                    var vit = 0;
 	                    if(diffTime > 0) {
-	                   		vit = (delta_dist / diffTime) * 3.6
+	                   		vit = (delta_dist / diffTime) * 3.6;
 	                    }
 	                        
-	                    vitArray.push(vit) 
+	                    vitArray.push(vit);
 				}	
 				
 				
@@ -988,35 +1027,9 @@
 			vitSmoothArray = vitArray;
 			vitSmoothArray = lowPass(vitSmoothArray, .50);
 			vitSmoothArray = hendersonSmooth(vitSmoothArray, 3);	
-					
-			// Labels
-			var m = document.getElementById("hb_stat_txt00");
-			m.innerHTML = RA + "(" + Math.round(hb_zone[0][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt01");
-			m.innerHTML = HHMMSS(hb_zone_out[0]) + " (" + round10((hb_zone_out[0]*100.0)/tot_sec_safe) + "% temps)";
-
-			var m = document.getElementById("hb_stat_txt10");
-			m.innerHTML = "EF: " + hb_zone[1][0] + "(" + Math.round(hb_zone[1][0]*100/FCMAX) + "%)" + "→" + hb_zone[1][1]+ "(" + Math.round(hb_zone[1][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt11");
-			m.innerHTML = HHMMSS(hb_zone_out[1]) + " (" + round10((hb_zone_out[1]*100.0)/tot_sec_safe) + "% temps)";
-
-			var m = document.getElementById("hb_stat_txt20");
-			m.innerHTML = "SV1+: " + hb_zone[2][0] + "(" + Math.round(hb_zone[2][0]*100/FCMAX) + "%)" + "→" + hb_zone[2][1]+ "(" + Math.round(hb_zone[2][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt21");
-			m.innerHTML = HHMMSS(hb_zone_out[2]) + " (" + round10((hb_zone_out[2]*100.0)/tot_sec_safe) + "% temps)";
-		
-			var m = document.getElementById("hb_stat_txt30");
-			m.innerHTML = "SV2+: " + hb_zone[3][0] + "(" + Math.round(hb_zone[3][0]*100/FCMAX) + "%)" + "→" + hb_zone[3][1]+ "(" + Math.round(hb_zone[3][1]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt31");
-			m.innerHTML = HHMMSS(hb_zone_out[3]) + " (" + round10((hb_zone_out[3]*100.0)/tot_sec_safe) + "% temps)";
 			
-			var m = document.getElementById("hb_stat_txt40");
-			m.innerHTML = PMA + "(" + Math.round(hb_zone[4][0]*100/FCMAX) + "%)";
-			var m = document.getElementById("hb_stat_txt41");
-			m.innerHTML = HHMMSS(hb_zone_out[4]) + " (" + round10((hb_zone_out[4]*100.0)/tot_sec_safe) + "% temps)";
-			
-			var hb_stat_txt = document.getElementById("hb_stat_txt");
-			hb_stat_txt.style.display = "block";
+			// hb stats text		
+			hb_stats_text(tot_sec_safe);
 		}
 					
 		function round10(n) {
@@ -1046,7 +1059,14 @@
 			
 			s = "<div>";
 			for (var i = 0; i < lapsArray.length ; i++) {
-				s += "Lap " + (i+1) + ": " + (lapsArray[i]["dist"]/1000).toFixed(2)+"km, " + HHMMSS(lapsArray[i]["time"]) + ", " + ((lapsArray[i]["dist"]/lapsArray[i]["time"])*3.6).toFixed(2) + "km/h," + " " + "FCmoy=" + lapsArray[i]["ave_hb"] + "(" + Math.round(lapsArray[i]["ave_hb"]*100/FCMAX) + "%)" + ", " + "FCmax=" + lapsArray[i]["max_hb"] + "(" + Math.round(lapsArray[i]["max_hb"]*100/FCMAX) + "%)";
+				var km = "";
+				if((lapsArray[i]["dist"]/1000).toFixed(2) < 10) {
+					km = "0" + (lapsArray[i]["dist"]/1000).toFixed(2);
+				}
+				else {
+					km = (lapsArray[i]["dist"]/1000).toFixed(2);
+				}
+				s += "Lap " + (i+1) + ": " + km+"km, " + HHMMSS(lapsArray[i]["time"]) + ", " + ((lapsArray[i]["dist"]/lapsArray[i]["time"])*3.6).toFixed(2) + "km/h," + " " + "FCmoy=" + lapsArray[i]["ave_hb"] + "(" + Math.round(lapsArray[i]["ave_hb"]*100/FCMAX) + "%)" + ", " + "FCmax=" + lapsArray[i]["max_hb"] + "(" + Math.round(lapsArray[i]["max_hb"]*100/FCMAX) + "%)";
 				s += "<br>";
 			}
 			s += "</div>";
@@ -1136,10 +1156,20 @@
 
 				for (var i = 0; i < Math.min(distArray.length, hbArrayOut.length) ; i++) {
 			        if(renderSpeed==1) {
-						graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i]]);
+			        	if(renderAlti==1) {
+			        		graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i], altiArray[i]]);
+			        	}
+			        	else {
+			        		graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i]]);
+			        	}
 			        }
 			        else {
-			        	graphArray.push([distArray[i], hbArrayOut[i]]);
+			        	if(renderAlti==1) {
+			        		graphArray.push([distArray[i], hbArrayOut[i], altiArray[i]]);
+			        	}
+			        	else {
+			        		graphArray.push([distArray[i], hbArrayOut[i]]);
+			        	}
 			        }
 				}				
 			}
@@ -1158,9 +1188,12 @@
 
 	        data.addColumn('number', 'FC');
 	        if(renderSpeed==1) {
-	       		data.addColumn('number', 'V');
+	       		data.addColumn('number', 'Vit');
 	        }
-
+	        if(renderAlti==1) {
+	       		data.addColumn('number', 'Alt');
+	        }
+	        
 	    	data.addRows( graphArray );
 
 			if(xAxisIsTime) {
@@ -1177,15 +1210,32 @@
 			}
 
 			if(renderSpeed==1) {
-				var series = {
-		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
-		            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
-				};
+				if(renderAlti==1) {
+					var series = {
+			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+			            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
+			            2: { type: "line", color: '#71e71b', targetAxisIndex:2 },
+					};						
+				}
+				else {
+					var series = {
+			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+			            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
+					};					
+				}
 			}
 			else {
-				var series = {
-		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
-				};		
+				if(renderAlti==1) {
+					var series = {
+			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+			            1: { type: "line", color: '#71e71b', targetAxisIndex:1 },
+					};		
+				}
+				else {
+					var series = {
+			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+					};		
+				}	
 			}
 	
 	        var options = {
@@ -1447,6 +1497,7 @@
 		        localStorage["custStr"] = localStr;
 		
 		        localStorage["dataLoaded"] = "true";
+		        document.location.reload(true);
 		    }
 		    else {
 		        alert("This browser doesn't support data storage. To save your customized input you'll either need to upgrade your browser or change the permissions on your existing browser.");
@@ -1499,7 +1550,7 @@
 
 		if (window.File && window.FileList && window.FileReader) {
 			Init();
-		}
+		};
 					
 		window.onload = function () {
 		    var anyData = "true";
@@ -1516,6 +1567,7 @@
 			    SV1 = 155;
 			    SV2 = 175;
 			    hb_zone = {0:[0,124], 1:[125, 155], 2:[156,175], 3:[176,189], 4:[190,240]};
+			    hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 		    }
 
 		    RA = "RA: <" + hb_zone[0][1];
@@ -1523,18 +1575,24 @@
     		SEUIL1 = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
     		SEUIL2 = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
     		PMA = "PMA: >=" + hb_zone[4][0];
-        		
+        	
 			// FC custom values
 			$("#saveFC_I").click(function () {
 				FCMAX = document.getElementById('FCMAX_I').value;
 				SV1 = document.getElementById('SV1_I').value;
 				SV2 = document.getElementById('SV2_I').value;
+			    RA = "RA: <" + hb_zone[0][1];
+	    		EF = "EF: " + hb_zone[1][0] + "→" + hb_zone[1][1];
+	    		SEUIL1 = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
+	    		SEUIL2 = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
+	    		PMA = "PMA: >=" + hb_zone[4][0];
 				hb_zone = {0:[0,Math.floor(FCMAX*0.65)], 1:[Math.ceil(FCMAX*0.65), SV1], 2:[SV1+1,SV2], 3:[SV2+1,Math.floor(FCMAX*0.96)], 4:[Math.ceil(FCMAX*0.96),240]};
+				hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 
 		        storeCustomData();
 		    }); // end of customize HR zones button
 		    
-		}
+		};
 		
 	</script>
 
