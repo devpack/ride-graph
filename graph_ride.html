@@ -15,7 +15,15 @@
 		    width: 80%;
 		    text-align: center;
 		}
-		
+
+    	.center_pad {
+		    margin-left: auto;
+		    margin-right: auto;
+		    width: 80%;
+		    text-align: center;
+		    padding:5px 0px 5px 0px;
+		}
+			
     	.bignum {
 		    font-size: 110%;
 		    color: "#656565";
@@ -218,11 +226,12 @@
             </td>
           </tr>
         </table>
-    <div>
+    </div>
       
 	<br>
 	<div id="general_stat" class="center"></div>
-	<div id="laps_stat" class="center" style="font-family: Courier New, Courier, Prestige, monospace;"></div>
+	<div id="laps_stat" class="center_pad" style="font-family: Courier New, Courier, Prestige, monospace;"></div>
+	<div id="zone_stat" class="center" style="font-family: Courier New, Courier, Prestige, monospace;"></div>
 
 	<div id="hb_graph_div" style="min-height: 400px;" ></div>
 	<br>
@@ -843,6 +852,8 @@
 		var posArray = new Array();
 		var vitArray = new Array();
 		var vitSmoothArray = new Array();
+		var vit_max = 0;
+		
         var max_hb = 0;
         var sum_hb = 0;
         var ave_hb = 0;
@@ -874,6 +885,7 @@
 			prev_dist = 0;
 			vitArray = new Array();
 			vitSmoothArray = new Array();
+			vit_max = 0;
 		}
 		
 		function parseTcx(xml) {
@@ -1028,6 +1040,13 @@
 			vitSmoothArray = lowPass(vitSmoothArray, .50);
 			vitSmoothArray = hendersonSmooth(vitSmoothArray, 3);	
 			
+			for (var i = 0; i < vitSmoothArray.length ; i++) {
+				var vit = vitSmoothArray[i];
+				if(vit > vit_max) {
+                	vit_max = vit;	
+            	}
+			}
+			
 			// hb stats text		
 			hb_stats_text(tot_sec_safe);
 		}
@@ -1050,7 +1069,7 @@
 			 s += "<div class='bigtext'>";
 			 s += "<b>" + "Distance:&nbsp" + "</b>" + "<span class='bignum'>" + (tot_dist/1000).toFixed(2)+"km" + "</span>" + ", ";
 			 s += "<b>" + "Temps:&nbsp" + "</b>" + "<span class='bignum'>" + HHMMSS(tot_sec) + "</span>"  + ", ";
-			 s += "<b>" + "Vitesse moy:&nbsp" + "</b>" + "<span class='bignum'>" + ((tot_dist/tot_sec)*3.6).toFixed(2) +"km/h" + "</span>"  + ", ";
+			 s += "<b>" + "Vitesse moy:&nbsp" + "</b>" + "<span class='bignum'>" + ((tot_dist/tot_sec)*3.6).toFixed(2) +"km/h (<b>max</b>=" + (vit_max).toFixed(1) + "km/h)" + "</span>"  + ", ";
 			 s += "<b>" + "FCmoy:&nbsp" + "</b>" + "<span class='bignum'>" + ave_hb.toFixed(0)+"bpm" + "("  + Math.round(ave_hb*100/FCMAX) + "%)" + "</span>" + ", ";
 			 s += "<b>" + "FCmax:&nbsp" + "</b>" + "<span class='bignum'>" + max_hb+"bpm" + "(" + Math.round(max_hb*100/FCMAX) + "%)" + "</span>";
 			 s += "</div>";
@@ -1194,7 +1213,7 @@
 	       		data.addColumn('number', 'Alt');
 	        }
 	        
-	    	data.addRows( graphArray );
+			data.addRows( graphArray );
 
 			if(xAxisIsTime) {
 				var haxis = {
@@ -1209,6 +1228,16 @@
 	           	};				
 			}
 
+			if(renderSpeed==1) {
+				var vAxes = {	0: { title: 'Fréquence cardiaque', gridlines: {'count': 10} },
+                  				1: { title: 'Vitesse', gridlines: {'count': 10}, 'maxValue': vit_max+8 } };
+			}
+			else {
+				var vAxes = { 0: { title: 'Fréquence cardiaque', gridlines: {'count': 10} } };
+            }
+	
+
+			// series	            
 			if(renderSpeed==1) {
 				if(renderAlti==1) {
 					var series = {
@@ -1238,15 +1267,11 @@
 				}	
 			}
 	
+			// options
 	        var options = {
                   
 	            hAxis: haxis,
-
-	            vAxis: {
-	              title: 'Fréquence cardiaque',
-	              gridlines: {'count': 10},
-	            },
-	            	            
+	            vAxes: vAxes,
 	            series: series,
           
 	            chartArea: {width:'80%',height:'80%'},
@@ -1262,8 +1287,68 @@
 		
 			 hbChart = new google.visualization.ComboChart(document.getElementById('hb_graph_div'));
 	         hbChart.draw(data, options);
+	         
+	         google.visualization.events.addListener(hbChart, 'select', zoneStats);
+	         
+			 //var cli = hbChart.getChartLayoutInterface();
+			 //console.log("ffffff " + cli.getChartAreaBoundingBox().top);
 	   }
-	   
+
+	  var lastSelectedRow = -1;
+	  var hbMoyZone = 0;
+	  var hbMaxZone = 0;
+	  var vitMaxZone = 0;
+
+	  function zoneStats() {
+	      var currentSelectedRow = hbChart.getSelection()[0].row;
+
+		  if(lastSelectedRow == -1) {
+			  s = "<b>Zone</b> [" + distArray[currentSelectedRow].toFixed(1) + ",";
+		  	  OutputInTag(s, "zone_stat");	  	
+		  }
+		  
+	      if(lastSelectedRow != -1) {
+	      	
+	      	  	var minRow = Math.min(lastSelectedRow, currentSelectedRow);
+	      	  	var maxRow = Math.max(lastSelectedRow, currentSelectedRow);
+	      	  	
+			  	s = "<b>Zone</b> [" + distArray[minRow].toFixed(1) + "km, " + distArray[maxRow].toFixed(1) + "km] : ";
+	      	  
+	      	  	hbMoyZone = 0;
+	      	  	hbMaxZone = 0;
+	      	  	vitMaxZone = 0;
+      		  	for (var i = minRow; i <= maxRow ; i++) {
+      		  		hbMoyZone += hbArray[i];
+      		  	
+      		  		if(hbArray[i] > hbMaxZone) {
+      		  			hbMaxZone = hbArray[i];
+      		  		}
+    
+    				if(vitSmoothArray[i] > vitMaxZone) {
+    					vitMaxZone = vitSmoothArray[i];
+    				}
+			  	}	
+			  	hbMoyZone = hbMoyZone / (maxRow-minRow);
+			  
+	      		currentSelectedRow = -1;
+	      		
+			  	// stat
+				var t2 = new Date(Date.parse(timeArray[maxRow]));
+				var t1 = new Date(Date.parse(timeArray[minRow]));
+				var diffTime = (t2-t1)/1000.0;
+					
+			 	s += "<b>" + "Distance:&nbsp" + "</b>" + "<span class='bignum'>" + ((distArray[maxRow]-distArray[minRow])).toFixed(2)+"km" + "</span>" + ", ";
+			 	s += "<b>" + "Temps:&nbsp" + "</b>" + "<span class='bignum'>" + HHMMSS(diffTime) + "</span>"  + ", ";
+			 	s += "<b>" + "Vitesse moy:&nbsp" + "</b>" + "<span class='bignum'>" + (( ((distArray[maxRow]-distArray[minRow])*1000) /diffTime)*3.6).toFixed(2) +"km/h (<b>max</b>=" + (vitMaxZone).toFixed(1) + "km/h)" + "</span>"  + ", ";
+			 	s += "<b>" + "FCmoy:&nbsp" + "</b>" + "<span class='bignum'>" + hbMoyZone.toFixed(0)+"bpm" + "("  + Math.round(hbMoyZone*100/FCMAX) + "%)" + "</span>" + ", ";
+			 	s += "<b>" + "FCmax:&nbsp" + "</b>" + "<span class='bignum'>" + hbMaxZone+"bpm" + "(" + Math.round(hbMaxZone*100/FCMAX) + "%)" + "</span>";
+			 
+	      		OutputInTag(s, "zone_stat");	 
+	      }
+	      
+	      lastSelectedRow = currentSelectedRow;
+	  }
+  	   
 	   function drawMap() {
 	          // ---------------------------------------
 
