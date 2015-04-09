@@ -1323,12 +1323,12 @@
       		  		if(hbArray[i] > hbMaxZone) {
       		  			hbMaxZone = hbArray[i];
       		  		}
-    
+    console.log(hbArray[i]);
     				if(vitSmoothArray[i] > vitMaxZone) {
     					vitMaxZone = vitSmoothArray[i];
     				}
 			  	}	
-			  	hbMoyZone = hbMoyZone / (maxRow-minRow);
+			  	hbMoyZone = hbMoyZone / (maxRow-minRow+1);
 			  
 	      		currentSelectedRow = -1;
 	      		
