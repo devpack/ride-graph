@@ -245,6 +245,21 @@
           </tr>
         </table>
         
+        <table style="display:inline;">
+          <tr>
+            <td>
+              <br>
+              <label id="showSV1Label">SV1</label>&nbsp;
+            </td>
+            <td>
+              <select id="showSV1Switch" data-mini="true" data-role="slider">
+                <option value="0" selected="selected">0</option>
+                <option value="1">1</option>
+              </select>
+            </td>
+          </tr>
+        </table> 
+        
     </div> <!-- switchesDiv -->
       
 	<br>
@@ -424,7 +439,27 @@
 					// TODO
 				}
 			});
-						
+				
+			// altitude
+			$("#showSV1Switch").bind( "change", function(event, ui) {
+	  			var showSV1SwitchValue = $("#showSV1Switch").val();
+				renderSV1 = showSV1SwitchValue;
+				
+				// reload
+				if(globalFiles.length <= 1) {
+					if(hbChart) {
+						hbChart.clearChart();
+					}
+					drawHbGraph();
+				}
+				else {
+					if(hbChart) {
+						hbChart.clearChart();
+					}
+						drawHbGraphMany();
+					}
+			});
+					
 			// hbPer100Switch
 			$("#hbPer100Switch").bind( "change", function(event, ui) {
 	  			var hbPer100SwitchValue = $("#hbPer100Switch").val();
@@ -454,6 +489,8 @@
 			// cleanup
 			cleanGlobalsMany();
 			
+			console.log(files);
+			
 			// nb files
 			nbFiles = files.length;
 			
@@ -472,6 +509,7 @@
 		var globalFiles;
 		var renderSpeed = 0;
 		var renderAlti = 0;
+		var renderSV1 = 0;
 		
 		var interpolMissingHB = true;
 		var xAxisIsTime = 0;
@@ -489,6 +527,9 @@
         var FCMAX;// = "195";
         var SV1;// = "155";
         var SV2;// = "175";
+        var ZONE_1;
+        var ZONE_2;
+        var ZONE_3;
         
 		var hbArrayMany = new Array();
 		var hbSmooth100ArrayMany = new Array();
@@ -496,6 +537,8 @@
 		var timeArrayMany = new Array();
 		var diffTimeArrayMany = new Array();
 		var distArrayMany = new Array();
+		var hbSV1ArrayMany = new Array();
+
 		var nbFilesParsed = 0;
 		var nbFiles;
 		var tot_sec_safe_many = 0;
@@ -521,6 +564,7 @@
 			timeArrayMany = new Array();
 			diffTimeArrayMany = new Array();
 			distArrayMany = new Array();
+			hbSV1ArrayMany = new Array();
 			hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 			nbFilesParsed = 0;
 			lastTimeMany = 0;
@@ -674,12 +718,29 @@
 				hbArrayOutMany = hbSmoothArrayMany;
 			}
 			
+			// SV1
+			hbSV1ArrayMany = new Array();
+			for (var i = 0; i < Math.min(distArrayMany.length, hbSmoothArrayMany.length) ; i++) {
+				if(hbIsPer100) {
+					hbSV1ArrayMany[i] = SV1*100/FCMAX;
+				}
+				else {
+					hbSV1ArrayMany[i] = SV1;				
+				}
+			}
+			
 			if(xAxisIsTimeMany==0) {
 				// distance
 				data.addColumn('number', 'X');
 
 				for (var i = 0; i < Math.min(distArrayMany.length, hbArrayOutMany.length) ; i++) {
-					graphArray.push([distArrayMany[i], hbArrayOutMany[i]]);
+					
+					if(renderSV1==1) {
+						graphArray.push([distArrayMany[i], hbArrayOutMany[i], hbSV1ArrayMany[i]]);
+					}
+					else {
+						graphArray.push([distArrayMany[i], hbArrayOutMany[i]]);						
+					}
 				}				
 			}
 			else {
@@ -689,13 +750,22 @@
 
 				var all_time_many = 0;
 				for (var i = 0; i < Math.min(diffTimeArrayMany.length, hbArrayOutMany.length) ; i++) {
-					graphArray.push([all_time_many/60, hbArrayOutMany[i]]);
+					
+					if(renderSV1==1) {
+						graphArray.push([all_time_many/60, hbArrayOutMany[i], hbSV1ArrayMany[i]]);						
+					}
+					else {
+						graphArray.push([all_time_many/60, hbArrayOutMany[i]]);						
+					}
+					
 					all_time_many += diffTimeArrayMany[i];
 				}				
 			} 
 
 	        data.addColumn('number', 'FC');
-	        //data.addColumn('number', 'V');
+	        if(renderSV1==1) {
+	        	data.addColumn('number', 'SV1');
+	        }
 
 	    	data.addRows( graphArray );
 
@@ -711,8 +781,20 @@
 	              	gridlines: {'count': 10},
 	           	};				
 			}
-
-
+	
+			// series
+	        if(renderSV1==1) {
+	            var series = {
+		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+		            1: { type: "line", color: '#71e71b', targetAxisIndex:0 },
+				}
+	        }
+	        else {
+	            var series = {
+		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				}	        	
+	        }
+	        
 	        var options = {
                   
 	            hAxis: haxis,
@@ -722,10 +804,7 @@
 	              gridlines: {'count': 10},
 	            },
 	            	            
-	            series: {
-		            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
-		            1: { type: "line", color: '#711be7', targetAxisIndex:0 },
-				},
+	            series: series,
           
 	            chartArea: {width:'80%',height:'80%'},
 	            
@@ -750,19 +829,17 @@
 			
 			var zones = new Array();
 			zones.push(['HB zones', 'HB zones']);
-			zones.push([PMA, hb_zone_out[4]]);
-			zones.push([SEUIL2, hb_zone_out[3]]);
-			zones.push([SEUIL1, hb_zone_out[2]]);
-			zones.push([EF, hb_zone_out[1]]);
-			zones.push([RA, hb_zone_out[0]]);
-		
+			zones.push([ZONE_1, hb_zone_out[0]+hb_zone_out[1]]);
+			zones.push([ZONE_2, hb_zone_out[2]]);
+			zones.push([ZONE_3, hb_zone_out[3] + hb_zone_out[4]]);
+				
 			//console.log(zones);
 			var data = google.visualization.arrayToDataTable(zones);
 	
 	        var options = {
 	          title: 'Zones de fréquence cardiaque',
 	          // chartArea: {width:'80%',height:'80%'},
-  			  colors: ['#DC3912', '#FF9900', '#FCE94F', '#329262', '#66AA00'],
+  			  colors: ['#329262', '#FCE94F', '#FF9900'],
   			  is3D: true,
 	        };
 	
@@ -833,28 +910,28 @@
 		function hb_stats_text(secs) {
 			var _tot_sec = secs;
 			var s = "<div>";
-			s += "RA &nbsp: <" + hb_zone[0][1] + "(" + Math.round(hb_zone[0][1]*100/FCMAX) + "%)";
+			s += "<b>RA</b> &nbsp: <" + hb_zone[0][1] + "(" + Math.round(hb_zone[0][1]*100/FCMAX) + "%)";
 			s += "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
 			s += "&nbsp|&nbsp";
 			s += "<b>" + HHMMSS(hb_zone_out[0]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[0]*100.0)/_tot_sec)) + "%)";
 			s += "<br>";
 			
-			s += "EF &nbsp: " + hb_zone[1][0] + "(" + Math.round(hb_zone[1][0]*100/FCMAX) + "%)" + "→" + hb_zone[1][1]+ "(" + Math.round(hb_zone[1][1]*100/FCMAX) + "%)";
+			s += "<b>EF</b> &nbsp: " + hb_zone[1][0] + "(" + Math.round(hb_zone[1][0]*100/FCMAX) + "%)" + "→" + hb_zone[1][1]+ "(" + Math.round(hb_zone[1][1]*100/FCMAX) + "%)";
 			s += "&nbsp|&nbsp";
 			s += "<b>" + HHMMSS(hb_zone_out[1]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[1]*100.0)/_tot_sec)) + "%)";
 			s += "<br>";
 
-			s += "SV1+: " + hb_zone[2][0] + "(" + Math.round(hb_zone[2][0]*100/FCMAX) + "%)" + "→" + hb_zone[2][1]+ "(" + Math.round(hb_zone[2][1]*100/FCMAX) + "%)";
+			s += "<b>SV1+</b>: " + hb_zone[2][0] + "(" + Math.round(hb_zone[2][0]*100/FCMAX) + "%)" + "→" + hb_zone[2][1]+ "(" + Math.round(hb_zone[2][1]*100/FCMAX) + "%)";
 			s += "&nbsp|&nbsp";
 			s += "<b>" + HHMMSS(hb_zone_out[2]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[2]*100.0)/_tot_sec)) + "%)";
 			s += "<br>";
 
-			s += "SV2+: " + hb_zone[3][0] + "(" + Math.round(hb_zone[3][0]*100/FCMAX) + "%)" + "→" + hb_zone[3][1]+ "(" + Math.round(hb_zone[3][1]*100/FCMAX) + "%)";
+			s += "<b>SV2+</b>: " + hb_zone[3][0] + "(" + Math.round(hb_zone[3][0]*100/FCMAX) + "%)" + "→" + hb_zone[3][1]+ "(" + Math.round(hb_zone[3][1]*100/FCMAX) + "%)";
 			s += "&nbsp|&nbsp";
 			s += "<b>" + HHMMSS(hb_zone_out[3]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[3]*100.0)/_tot_sec)) + "%)";
 			s += "<br>";
 			
-			s += "PMA : >=" + hb_zone[4][0] + "(" + Math.round(hb_zone[4][0]*100/FCMAX) + "%)";
+			s += "<b>PMA</b> : >=" + hb_zone[4][0] + "(" + Math.round(hb_zone[4][0]*100/FCMAX) + "%)";
 			s += "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
 			s += "&nbsp|&nbsp";
 			s += "<b>" + HHMMSS(hb_zone_out[4]) + "</b>" + " (" + sanatizePercent(round10((hb_zone_out[4]*100.0)/_tot_sec)) + "%)";
@@ -904,6 +981,7 @@
 	
 	    // ---------------------------------------------------------------------------------------------
 		
+		var hbFixedArray = [80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200];
 		var removeStopTimeLimitSec = 15;
 		
 		// const to clear on reload
@@ -925,7 +1003,8 @@
 		var hbSmoothArray = new Array();
 		var hbSmooth100Array = new Array();
 		var hbIsPer100 = 0;
-		
+		var hbSV1Array = new Array();
+
 		var altiArray = new Array();
 		
 		var distArray = new Array();
@@ -947,6 +1026,7 @@
 			hbArrayTime = new Array();
 			hbSmoothArray = new Array();
 			hbSmooth100Array = new Array();
+			hbSV1Array = new Array();
 			hbIsPer100 = 0;
 			hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 			lapsArray = new Array();
@@ -1008,6 +1088,7 @@
 				var hb = $(this).find("HeartRateBpm").find("Value").text();
 				if(hb != "" && lastTime!=0) {
 					hbInt = parseInt(hb);
+					
 					hbArray.push(hbInt);
 					hbArrayTime.push(diffTime);
 					
@@ -1042,7 +1123,7 @@
 				if(dist != "") {
 					var d = parseFloat(dist);
 					distArray.push( d/1000.0 );
-					
+					hbArray.push(0);
 					var delta_dist = d - prev_dist;
                     if(delta_dist < 0) {
                 		delta_dist = 0;
@@ -1054,7 +1135,7 @@
                    		vit = (delta_dist / diffTime) * 3.6;
                     }
                         
-                    vitArray.push(vit);
+                    vitArray.push(vit+0.01);
 				}	
 				
 				//console.log(vitArray);
@@ -1133,7 +1214,7 @@
 			
 			for (var i = 0; i < vitSmoothArray.length ; i++) {
 				var vit = vitSmoothArray[i];
-				if(vit > vit_max) {
+				if((vit > vit_max && (vit<5000)) ) {
                 	vit_max = vit;	
             	}
 			}
@@ -1167,6 +1248,7 @@
 			 s += "<b>" + "Distance:&nbsp" + "</b>" + "<span class='bignum'>" + (tot_dist/1000).toFixed(2)+"km" + "</span>" + ", ";
 			 s += "<b>" + "Temps:&nbsp" + "</b>" + "<span class='bignum'>" + HHMMSS(tot_sec) + "</span>"  + ", ";
 			 s += "<b>" + "Vitesse moy:&nbsp" + "</b>" + "<span class='bignum'>" + ((tot_dist/tot_sec)*3.6).toFixed(2) +"km/h (<b>max</b>=" + (vit_max).toFixed(1) + "km/h)" + "</span>"  + ", ";
+			 //s += "<b>" + "Vitesse moy:&nbsp" + "</b>" + "<span class='bignum'>" + ((tot_dist/tot_sec)*3.6).toFixed(2) +"km/h" + "</span>"  + ", ";
 			 s += "<b>" + "FCmoy:&nbsp" + "</b>" + "<span class='bignum'>" + ave_hb.toFixed(0)+"bpm" + "("  + Math.round(ave_hb*100/FCMAX) + "%)" + "</span>" + ", ";
 			 s += "<b>" + "FCmax:&nbsp" + "</b>" + "<span class='bignum'>" + max_hb+"bpm" + "(" + Math.round(max_hb*100/FCMAX) + "%)" + "</span>";
 			 s += "</div>";
@@ -1276,19 +1358,18 @@
 			
 			var zones = new Array();
 			zones.push(['HB zones', 'HB zones']);
-			zones.push([PMA, hb_zone_out[4]]);
-			zones.push([SEUIL2, hb_zone_out[3]]);
-			zones.push([SEUIL1, hb_zone_out[2]]);
-			zones.push([EF, hb_zone_out[1]]);
-			zones.push([RA, hb_zone_out[0]]);
-		
+			zones.push([ZONE_1, hb_zone_out[0]+hb_zone_out[1]]);
+			zones.push([ZONE_2, hb_zone_out[2]]);
+			zones.push([ZONE_3, hb_zone_out[3] + hb_zone_out[4]]);
+	
 			//console.log(zones);
 			var data = google.visualization.arrayToDataTable(zones);
 	
 	        var options = {
 	          title: 'Zones de fréquence cardiaque',
 	          // chartArea: {width:'80%',height:'80%'},
-  			  colors: ['#DC3912', '#FF9900', '#FCE94F', '#329262', '#66AA00'],
+  			  //colors: ['#DC3912', '#FF9900', '#FCE94F', '#329262', '#66AA00'],
+  			  colors: ['#329262', '#FCE94F', '#FF9900'],
   			  is3D: true,
 	        };
 	
@@ -1340,7 +1421,18 @@
 			else {
 				hbArrayOut = hbSmoothArray;
 			}
-			
+		
+			// SV1
+			hbSV1Array = new Array();
+			for (var i = 0; i < Math.max(distArray.length, hbArrayOut.length) ; i++) {
+				if(hbIsPer100) {
+					hbSV1Array[i] = SV1*100/FCMAX;
+				}
+				else {
+					hbSV1Array[i] = SV1;				
+				}
+			}
+				
 			graphArray = new Array();
 			
 			//console.log(Math.min(distArray.length, hbArrayOut.length));
@@ -1352,18 +1444,38 @@
 				for (var i = 0; i < Math.min(distArray.length, hbArrayOut.length) ; i++) {
 			        if(renderSpeed==1) {
 			        	if(renderAlti==1) {
-			        		graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i], altiArray[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i], altiArray[i], hbSV1Array[i]]);			        			
+			        		}
+			        		else {
+			        			graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i], altiArray[i]]);			        			
+			        		}
 			        	}
 			        	else {
-			        		graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i], hbSV1Array[i]]);	        			
+			        		}
+			        		else {
+			        			graphArray.push([distArray[i], hbArrayOut[i], vitSmoothArray[i]]);	        			
+			        		}
 			        	}
 			        }
 			        else {
 			        	if(renderAlti==1) {
-			        		graphArray.push([distArray[i], hbArrayOut[i], altiArray[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([distArray[i], hbArrayOut[i], altiArray[i], hbSV1Array[i]]);
+			        		}
+			        		else {
+			        			graphArray.push([distArray[i], hbArrayOut[i], altiArray[i]]);
+			        		}
 			        	}
 			        	else {
-			        		graphArray.push([distArray[i], hbArrayOut[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([distArray[i], hbArrayOut[i], hbSV1Array[i]]);     			
+			        		}
+			        		else {
+			        			graphArray.push([distArray[i], hbArrayOut[i]]);
+			        		} 
 			        	}
 			        }
 				}				
@@ -1378,18 +1490,39 @@
 					
 			        if(renderSpeed==1) {
 			        	if(renderAlti==1) {
-			        		graphArray.push([all_time/60, hbArrayOut[i], vitSmoothArray[i], altiArray[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([all_time/60, hbArrayOut[i], vitSmoothArray[i], altiArray[i], hbSV1Array[i]]);			        			
+			        		}
+			        		else {
+			        			graphArray.push([all_time/60, hbArrayOut[i], vitSmoothArray[i], altiArray[i]]);			        			
+			        		}
 			        	}
 			        	else {
-			        		graphArray.push([all_time/60, hbArrayOut[i], vitSmoothArray[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([all_time/60, hbArrayOut[i], vitSmoothArray[i], hbSV1Array[i]]);	
+			        		}
+			        		else {
+			        			graphArray.push([all_time/60, hbArrayOut[i], vitSmoothArray[i]]);	
+			        		}			        		
 			        	}
 			        }
 			        else {
 			        	if(renderAlti==1) {
-			        		graphArray.push([all_time/60, hbArrayOut[i], altiArray[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([all_time/60, hbArrayOut[i], altiArray[i], hbSV1Array[i]]);
+			        		}
+			        		else {
+			        			graphArray.push([all_time/60, hbArrayOut[i], altiArray[i]]);
+			        		}			        		
 			        	}
 			        	else {
-			        		graphArray.push([all_time/60, hbArrayOut[i]]);
+			        		if(renderSV1==1) {
+			        			graphArray.push([all_time/60, hbArrayOut[i], hbSV1Array[i]]);     			
+			        		}
+			        		else {
+			        			graphArray.push([all_time/60, hbArrayOut[i]]);
+			        		} 
+			        		
 			        	}
 			        }
 			        
@@ -1404,7 +1537,10 @@
 	        if(renderAlti==1) {
 	       		data.addColumn('number', 'Alt');
 	        }
-	        
+	        if(renderSV1==1) {
+	       		data.addColumn('number', 'SV1');
+	        }
+	        	
 			data.addRows( graphArray );
 
 			if(xAxisIsTime==1) {
@@ -1420,42 +1556,91 @@
 	           	};				
 			}
 
-			if(renderSpeed==1) {
-				var vAxes = {	0: { title: 'Fréquence cardiaque', gridlines: {'count': 10} },
-                  				1: { title: 'Vitesse', gridlines: {'count': 10}, 'maxValue': vit_max+5 } };
+			if(!hbIsPer100) {
+				if(renderSpeed==1) {
+					var vAxes = {	0: { title: 'Fréquence cardiaque', ticks: hbFixedArray },
+	                  				1: { title: 'Vitesse', gridlines: {'count': 10}, 'maxValue': vit_max+5, 'minValue': 0, 'viewWindow': {'min': 0} } };
+				}
+				else {
+					//var vAxes = { 0: { title: 'Fréquence cardiaque', gridlines: {'count': 12}, 'maxValue': FCMAX } };
+					//var vAxes = { 0: { title: 'Fréquence cardiaque', ticks: hbFixedArray, 'viewWindow': {'min': 60, 'max': 205} } };
+					var vAxes = { 0: { title: 'Fréquence cardiaque', ticks: hbFixedArray } };
+	            }				
 			}
 			else {
-				var vAxes = { 0: { title: 'Fréquence cardiaque', gridlines: {'count': 10} } };
-            }
+				if(renderSpeed==1) {
+					var vAxes = {	0: { title: 'Fréquence cardiaque', ticks: hbFixedArray },
+	                  				1: { title: 'Vitesse', gridlines: {'count': 10}, 'maxValue': vit_max+5, 'minValue': 0, 'viewWindow': {'min': 0} } };
+				}
+				else {
+					var vAxes = { 0: { title: 'Fréquence cardiaque', gridlines: {'count': 10}, 'maxValue': 100 } };
+	            }					
+			}
 	
 
 			// series	            
 			if(renderSpeed==1) {
 				if(renderAlti==1) {
-					var series = {
-			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
-			            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
-			            2: { type: "line", color: '#71e71b', targetAxisIndex:2 },
-					};						
+					if(renderSV1==1) {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
+				            2: { type: "line", color: '#71e71b', targetAxisIndex:2 },
+							3: { type: "line", color: '#71e71b', targetAxisIndex:0 },
+						};	
+					}
+					else {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
+				            2: { type: "line", color: '#71e71b', targetAxisIndex:2 },
+						};							
+					}					
 				}
 				else {
-					var series = {
-			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
-			            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
-					};					
+					if(renderSV1==1) {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
+							2: { type: "line", color: '#71e71b', targetAxisIndex:0 },
+						};	
+					}
+					else {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				            1: { type: "line", color: '#711be7', targetAxisIndex:1 },
+						};							
+					}				
 				}
 			}
 			else {
 				if(renderAlti==1) {
-					var series = {
-			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
-			            1: { type: "line", color: '#71e71b', targetAxisIndex:1 },
-					};		
+					if(renderSV1==1) {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				            1: { type: "line", color: '#71e71b', targetAxisIndex:1 },
+							2: { type: "line", color: '#71e71b', targetAxisIndex:0 },
+						};		
+					}
+					else {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+				            1: { type: "line", color: '#71e71b', targetAxisIndex:1 },
+						};							
+					}	
 				}
 				else {
-					var series = {
-			            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
-					};		
+					if(renderSV1==1) {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+			            	1: { type: "line", color: '#71e71b', targetAxisIndex:0 },
+						};	
+					}
+					else {
+						var series = {
+				            0: { type: "area", color: '#cc5555', targetAxisIndex:0 },
+						};	
+					}	
 				}	
 			}
 	
@@ -1805,7 +1990,7 @@
 			    SV1 = Number(theVals[1]);
 			    SV2 = Number(theVals[2]);
 			    
-				hb_zone = {0:[0,Math.floor(FCMAX*0.65)], 1:[Math.ceil(FCMAX*0.65), SV1], 2:[SV1+1,SV2], 3:[SV2+1,Math.floor(FCMAX*0.96)], 4:[Math.ceil(FCMAX*0.96),240]};
+				hb_zone = {0:[0,Math.floor(FCMAX*0.65)], 1:[Math.ceil(FCMAX*0.65), SV1], 2:[SV1+1,SV2], 3:[SV2+1,Math.floor(FCMAX*0.95)], 4:[Math.ceil(FCMAX*0.95),240]};
 		}
 																												
 		// -------
@@ -1857,7 +2042,7 @@
 		    	FCMAX = 195;
 			    SV1 = 155;
 			    SV2 = 175;
-			    hb_zone = {0:[0,124], 1:[125, 155], 2:[156,175], 3:[176,189], 4:[190,240]};
+			    hb_zone = {0:[0,126], 1:[127, 155], 2:[156,175], 3:[176,185], 4:[186,240]};
 			    hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 		    }
 
@@ -1866,7 +2051,10 @@
     		SEUIL1 = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
     		SEUIL2 = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
     		PMA = "PMA: >=" + hb_zone[4][0];
-        	
+         	ZONE_1 = "ZONE 1: " + "<" + hb_zone[1][1];
+        	ZONE_2 = "ZONE 2: " + hb_zone[2][0] + "→" + hb_zone[2][1];
+        	ZONE_3 = "ZONE 3: " + ">" + hb_zone[3][0];
+               	
 			// FC custom values
 			$("#saveFC_I").click(function () {
 				FCMAX = document.getElementById('FCMAX_I').value;
@@ -1877,7 +2065,10 @@
 	    		SEUIL1 = "SV1+: " + hb_zone[2][0] + "→" + hb_zone[2][1];
 	    		SEUIL2 = "SV2+: " + hb_zone[3][0] + "→" + hb_zone[3][1];
 	    		PMA = "PMA: >=" + hb_zone[4][0];
-				hb_zone = {0:[0,Math.floor(FCMAX*0.65)], 1:[Math.ceil(FCMAX*0.65), SV1], 2:[SV1+1,SV2], 3:[SV2+1,Math.floor(FCMAX*0.96)], 4:[Math.ceil(FCMAX*0.96),240]};
+	         	ZONE_1 = "ZONE 1: " + "<" + hb_zone[1][1];
+	        	ZONE_2 = "ZONE 2: " + hb_zone[2][0] + "→" + hb_zone[2][1];
+	        	ZONE_3 = "ZONE 3: " + ">" + hb_zone[3][0];
+				hb_zone = {0:[0,Math.floor(FCMAX*0.65)], 1:[Math.ceil(FCMAX*0.65), SV1], 2:[SV1+1,SV2], 3:[SV2+1,Math.floor(FCMAX*0.95)], 4:[Math.ceil(FCMAX*0.95),240]};
 				hb_zone_out = {0:0, 1:0, 2:0, 3:0, 4:0};
 
 		        storeCustomData();
